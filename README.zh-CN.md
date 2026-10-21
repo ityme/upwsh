@@ -1,19 +1,12 @@
-<div align="center">
-
 # unixify-powershell
 
 **为 Windows 上的 PowerShell 7 提供原生 Unix 风格的 shell 体验。**
 
 [English](README.md) · [安装](#安装) · [快速体验](#快速体验) · [主题](#主题) · [开发说明](docs/development.md)
 
-<table>
-<tr>
-<td><img src="docs/assets/themes/pure-classic.png" alt="pure-classic 提示符" width="100%"></td>
-<td><img src="docs/assets/themes/colorful-blue.png" alt="colorful-blue 提示符" width="100%"></td>
-</tr>
-</table>
+![pure-classic 提示符](docs/assets/themes/readme/pure-classic.png)
 
-</div>
+![colorful-blue 提示符](docs/assets/themes/readme/colorful-blue.png)
 
 让 PowerShell 拥有 Unix 风格路径、熟悉的文件命令、快速补全，以及保持原生质感的提示符。
 
@@ -146,37 +139,29 @@ upwsh theme use "pure-classic"
 | `pure-*` | 终端原生背景上的简洁提示符 | [pure-classic](src/theme/pure-classic.json) |
 | `colorful-*` | 连续 Powerline 色块 | [colorful-blue](src/theme/colorful-blue.json) |
 
-<table>
-<tr>
-<td><img src="docs/assets/themes/pure-classic.png" alt="pure-classic 提示符" width="100%"></td>
-<td><img src="docs/assets/themes/colorful-blue.png" alt="colorful-blue 提示符" width="100%"></td>
-</tr>
-</table>
-
 [打开交互式主题画廊](docs/assets/themes/gallery.html)，离线比较所有命令状态。
-
-<details>
-<summary>查看全部主题</summary>
 
 ### pure-* · 透明背景
 
-- [pure-classic](src/theme/pure-classic.json) — 绿色用户/主机，黄色斜体目录，青色分支
-- [pure-glacier](src/theme/pure-glacier.json) — 冰蓝目录，淡紫分支
-- [pure-ember](src/theme/pure-ember.json) — 琥珀目录，暖白分支
-- [pure-quiet](src/theme/pure-quiet.json) — 隐藏用户/主机和耗时
-- [pure-daylight](src/theme/pure-daylight.json) — 深蓝、深紫，适合浅色终端背景
+| 主题 | 预览 |
+| --- | --- |
+| [pure-classic](src/theme/pure-classic.json) | ![pure-classic 提示符](docs/assets/themes/readme/pure-classic.png) |
+| [pure-glacier](src/theme/pure-glacier.json) | ![pure-glacier 提示符](docs/assets/themes/readme/pure-glacier.png) |
+| [pure-ember](src/theme/pure-ember.json) | ![pure-ember 提示符](docs/assets/themes/readme/pure-ember.png) |
+| [pure-quiet](src/theme/pure-quiet.json) | ![pure-quiet 提示符](docs/assets/themes/readme/pure-quiet.png) |
+| [pure-daylight](src/theme/pure-daylight.json) | ![pure-daylight 提示符](docs/assets/themes/readme/pure-daylight.png) |
 
 ### colorful-* · 连续色块
 
-- [colorful-blue](src/theme/colorful-blue.json) — 深青、湖绿、亮青、冰青
-- [colorful-green](src/theme/colorful-green.json) — 鼠尾草绿、抹茶绿、春芽绿、极地薄荷
-- [colorful-macaron](src/theme/colorful-macaron.json) — 香芋紫、天空蓝、湖水绿、嫩芽绿
-- [colorful-morandi](src/theme/colorful-morandi.json) — 豆沙灰、灰粉、燕麦、亚麻
-- [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) — 霓虹紫、极光蓝、荧光绿、冰蓝
-- [colorful-retro](src/theme/colorful-retro.json) — 森林暗绿、砖赭、暖棕、象牙白
-- [colorful-memphis](src/theme/colorful-memphis.json) — 亮粉、柠檬黄、青绿、极浅蓝
-
-</details>
+| 主题 | 预览 |
+| --- | --- |
+| [colorful-blue](src/theme/colorful-blue.json) | ![colorful-blue 提示符](docs/assets/themes/readme/colorful-blue.png) |
+| [colorful-green](src/theme/colorful-green.json) | ![colorful-green 提示符](docs/assets/themes/readme/colorful-green.png) |
+| [colorful-macaron](src/theme/colorful-macaron.json) | ![colorful-macaron 提示符](docs/assets/themes/readme/colorful-macaron.png) |
+| [colorful-morandi](src/theme/colorful-morandi.json) | ![colorful-morandi 提示符](docs/assets/themes/readme/colorful-morandi.png) |
+| [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) | ![colorful-cyberpunk 提示符](docs/assets/themes/readme/colorful-cyberpunk.png) |
+| [colorful-retro](src/theme/colorful-retro.json) | ![colorful-retro 提示符](docs/assets/themes/readme/colorful-retro.png) |
+| [colorful-memphis](src/theme/colorful-memphis.json) | ![colorful-memphis 提示符](docs/assets/themes/readme/colorful-memphis.png) |
 
 Colorful 的用户、主机、目录、Git 使用连续色块。耗时、返回码与 `❯` 用终端默认背景。非仓库、短耗时或成功时对应段隐藏，不留多余箭头。文字对比记录在各 JSON 的 `_Comment.ContrastAdjustments`。
 

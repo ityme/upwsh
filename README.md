@@ -1,19 +1,12 @@
-<div align="center">
-
 # unixify-powershell
 
 **A native Unix-style shell layer for PowerShell 7 on Windows.**
 
 [简体中文](README.zh-CN.md) · [Install](#install) · [Try it](#try-it) · [Themes](#themes) · [Development](docs/development.md)
 
-<table>
-<tr>
-<td><img src="docs/assets/themes/pure-classic.png" alt="pure-classic prompt" width="100%"></td>
-<td><img src="docs/assets/themes/colorful-blue.png" alt="colorful-blue prompt" width="100%"></td>
-</tr>
-</table>
+![pure-classic prompt](docs/assets/themes/readme/pure-classic.png)
 
-</div>
+![colorful-blue prompt](docs/assets/themes/readme/colorful-blue.png)
 
 A focused shell experience for people who want Unix-style paths, familiar commands, fast completion, and a prompt that stays native to PowerShell.
 
@@ -146,37 +139,29 @@ upwsh theme use "pure-classic"
 | `pure-*` | Minimal prompt on the terminal background | [pure-classic](src/theme/pure-classic.json) |
 | `colorful-*` | Connected Powerline color blocks | [colorful-blue](src/theme/colorful-blue.json) |
 
-<table>
-<tr>
-<td><img src="docs/assets/themes/pure-classic.png" alt="pure-classic prompt" width="100%"></td>
-<td><img src="docs/assets/themes/colorful-blue.png" alt="colorful-blue prompt" width="100%"></td>
-</tr>
-</table>
-
 [Open the interactive theme gallery](docs/assets/themes/gallery.html) to compare all command states offline.
-
-<details>
-<summary>All themes</summary>
 
 ### pure-* · transparent backgrounds
 
-- [pure-classic](src/theme/pure-classic.json) — green user/host, yellow italic folder, cyan branch
-- [pure-glacier](src/theme/pure-glacier.json) — ice-blue folder, lavender branch
-- [pure-ember](src/theme/pure-ember.json) — amber folder, warm-white branch
-- [pure-quiet](src/theme/pure-quiet.json) — hides user/host and duration
-- [pure-daylight](src/theme/pure-daylight.json) — deep blue and purple for a light terminal background
+| Theme | Preview |
+| --- | --- |
+| [pure-classic](src/theme/pure-classic.json) | ![pure-classic prompt](docs/assets/themes/readme/pure-classic.png) |
+| [pure-glacier](src/theme/pure-glacier.json) | ![pure-glacier prompt](docs/assets/themes/readme/pure-glacier.png) |
+| [pure-ember](src/theme/pure-ember.json) | ![pure-ember prompt](docs/assets/themes/readme/pure-ember.png) |
+| [pure-quiet](src/theme/pure-quiet.json) | ![pure-quiet prompt](docs/assets/themes/readme/pure-quiet.png) |
+| [pure-daylight](src/theme/pure-daylight.json) | ![pure-daylight prompt](docs/assets/themes/readme/pure-daylight.png) |
 
 ### colorful-* · connected color blocks
 
-- [colorful-blue](src/theme/colorful-blue.json) — deep teal, lake green, bright teal, ice teal
-- [colorful-green](src/theme/colorful-green.json) — sage, matcha, spring green, pale mint
-- [colorful-macaron](src/theme/colorful-macaron.json) — lilac, sky blue, lake green, soft green
-- [colorful-morandi](src/theme/colorful-morandi.json) — sage grey, dusty pink, oat, linen
-- [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) — neon purple, electric blue, aqua, ice blue
-- [colorful-retro](src/theme/colorful-retro.json) — forest green, ochre, warm tan, ivory
-- [colorful-memphis](src/theme/colorful-memphis.json) — pink, lemon yellow, cyan, pale blue
-
-</details>
+| Theme | Preview |
+| --- | --- |
+| [colorful-blue](src/theme/colorful-blue.json) | ![colorful-blue prompt](docs/assets/themes/readme/colorful-blue.png) |
+| [colorful-green](src/theme/colorful-green.json) | ![colorful-green prompt](docs/assets/themes/readme/colorful-green.png) |
+| [colorful-macaron](src/theme/colorful-macaron.json) | ![colorful-macaron prompt](docs/assets/themes/readme/colorful-macaron.png) |
+| [colorful-morandi](src/theme/colorful-morandi.json) | ![colorful-morandi prompt](docs/assets/themes/readme/colorful-morandi.png) |
+| [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) | ![colorful-cyberpunk prompt](docs/assets/themes/readme/colorful-cyberpunk.png) |
+| [colorful-retro](src/theme/colorful-retro.json) | ![colorful-retro prompt](docs/assets/themes/readme/colorful-retro.png) |
+| [colorful-memphis](src/theme/colorful-memphis.json) | ![colorful-memphis prompt](docs/assets/themes/readme/colorful-memphis.png) |
 
 Colorful uses connected user, host, folder and Git blocks. Duration, exit code and `❯` stay on the terminal background. Missing Git, short commands and successful commands hide those segments without leftover arrows. Foreground contrast notes are in each JSON's `_Comment.ContrastAdjustments`.
 
