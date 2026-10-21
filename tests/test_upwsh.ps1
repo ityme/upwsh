@@ -144,7 +144,7 @@ try {
         Assert-Contains $result.Text 'These are common upwsh commands'
         $result = Invoke-Upwsh -Tokens @('-h')
         Assert-Equal $result.Code 0
-        Assert-Contains $result.Text "hook the current user's pwsh"
+        Assert-Contains $result.Text 'install and manage unixify-powershell'
     }
 
     Invoke-UpwshTest 'unknown option prints usage and exits 2' {

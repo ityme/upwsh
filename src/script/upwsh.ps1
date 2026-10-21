@@ -25,28 +25,27 @@ usage: upwsh [-h | --help] <command> [<args>]
 
 These are common upwsh commands used in various situations:
 
-hook the current user's pwsh
+install and manage unixify-powershell
+   install          Install or repair the runtime, then load this pwsh
+   update           Update the runtime, then load this pwsh
+   uninstall        Unload and remove the runtime; keep changed user settings
+
+maintenance
    load             Enable startup loading and load this pwsh
-   unload           Stop $PROFILE from loading it and drop the current-session profile
+   unload           Disable startup loading and unload this pwsh
 
-install this runtime
-   install          Install or repair ~/.config/upwsh, then load
-   uninstall        Unload, drop UPWSH_HOME and Path, then delete the install tree; keep a changed user-settings.ps1
-   update           Update installed files; keep tools, user-settings.ps1, and startup loading state
+manage optional command-line tools
+   tool list        List supported tools and whether they are available
+   tool install     Download named tools; --all installs all supported tools
+   tool update      Update named tools; --all updates installed tools
+   tool uninstall   Remove named tools
 
-install a listed CLI tool
-   tool list        List supported tools and whether the shell has them
-   tool install     Download named tools; --all installs the supported list
-   tool update      Replace named tools with the latest release; --all updates installed tools
-   tool uninstall   Remove the named tools from UPWSH_HOME\\tool\\bin
-
-select a local prompt theme
+select a prompt theme
    theme list       List installed themes; * marks the active theme
-   theme use        Select a local theme by name and refresh the prompt
-   theme install    Compatibility alias for theme use
+   theme use        Select a theme and refresh the prompt
 
 edit personal settings
-   edit             Open ~/.config/upwsh/user-settings.ps1 in nvim, then reload this pwsh
+   edit             Open user-settings.ps1, then reload this pwsh
 
 'upwsh --help' prints this overview.
 
@@ -476,4 +475,4 @@ if ($parsed.Command -eq 'edit') {
 }
 
 Invoke-UpwshTool -Parsed $parsed
-Complete-Upwsh 0 $scriptInvocation
+Complete-Upwsh $global:LASTEXITCODE $scriptInvocation

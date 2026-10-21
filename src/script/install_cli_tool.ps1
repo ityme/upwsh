@@ -223,12 +223,23 @@ if ($List) {
 
 New-Item -ItemType Directory -Path $Dir -Force | Out-Null
 Write-UpwshStatus dir $Dir
+$failed = [Collections.Generic.List[string]]::new()
 foreach ($tool in $selected) {
-    if ($Uninstall) {
-        Uninstall-CliTool -Tool $tool -Destination $Dir
-        continue
+    try {
+        if ($Uninstall) {
+            Uninstall-CliTool -Tool $tool -Destination $Dir
+            continue
+        }
+        Install-CliTool -Tool $tool -Destination $Dir -Force:$Update
+    } catch {
+        $failed.Add("$($tool.Name): $($_.Exception.Message)")
+        Write-UpwshStatus error "$($tool.Name)  $($_.Exception.Message)"
     }
-    Install-CliTool -Tool $tool -Destination $Dir -Force:$Update
+}
+
+if ($failed.Count -gt 0) {
+    $global:LASTEXITCODE = 1
+    Write-UpwshStatus failed ($failed -join '; ')
 }
 
 if (-not $Uninstall) {
