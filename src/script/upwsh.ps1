@@ -471,8 +471,8 @@ if ($parsed.Command -in @('load', 'unload')) {
 if ($parsed.Command -in @('install', 'uninstall', 'update')) {
     Invoke-UpwshSetup -Parsed $parsed
     $setupCode = $global:LASTEXITCODE
-    Invoke-UpwshPostSetup -Command $parsed.Command -Code $setupCode
     Complete-Upwsh $setupCode $scriptInvocation
+    Invoke-UpwshPostSetup -Command $parsed.Command -Code $setupCode
     return
 }
 
