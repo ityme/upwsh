@@ -145,6 +145,8 @@ try {
         $result = Invoke-Upwsh -Tokens @('-h')
         Assert-Equal $result.Code 0
         Assert-Contains $result.Text 'install and manage unixify-powershell'
+        Assert-Contains $result.Text '[--local | --remote | --source <dir>]'
+        Assert-Contains $result.Text '[--ref <ref>] [--repo <owner/name>]'
     }
 
     Invoke-UpwshTest 'unknown option prints usage and exits 2' {

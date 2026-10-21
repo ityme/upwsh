@@ -27,7 +27,11 @@ These are common upwsh commands used in various situations:
 
 install and manage unixify-powershell
    install          Install or repair the runtime, then load this pwsh
+                    [--local | --remote | --source <dir>]
+                    [--ref <ref>] [--repo <owner/name>]
    update           Update the runtime, then load this pwsh
+                    [--local | --remote | --source <dir>]
+                    [--ref <ref>] [--repo <owner/name>]
    uninstall        Unload and remove the runtime; keep changed user settings
 
 maintenance
