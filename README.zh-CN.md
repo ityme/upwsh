@@ -4,27 +4,31 @@
 
 **为 Windows 上的 PowerShell 7 提供原生 Unix 风格的 shell 体验。**
 
-[English](README.md) · [安装](#安装) · [路径](#使用路径) · [主题](#主题) · [开发说明](docs/development.md)
+[English](README.md) · [安装](#安装) · [快速体验](#快速体验) · [主题](#主题) · [开发说明](docs/development.md)
+
+<table>
+<tr>
+<td><img src="docs/assets/themes/pure-classic.png" alt="pure-classic 提示符" width="100%"></td>
+<td><img src="docs/assets/themes/colorful-blue.png" alt="colorful-blue 提示符" width="100%"></td>
+</tr>
+</table>
 
 </div>
 
 让 PowerShell 拥有 Unix 风格路径、熟悉的文件命令、快速补全，以及保持原生质感的提示符。
 
-```text
-user@host project dev ❯
-```
-
 提示符显示当前文件夹、Git 分支、命令耗时和退出状态，不运行 Starship。路径使用 `/d/work`、`~/projects`，语法和管道仍使用 PowerShell。
 
-## 核心体验
+## 它增加了什么
 
-| 操作 | 原生 PowerShell | 使用 unixify-powershell |
-| --- | --- | --- |
-| 切换目录 | `cd D:\work` | `cd /d/work` |
-| 列出文件 | `Get-ChildItem` | `ls` / `ll`（通过 eza） |
-| 复制目录 | `Copy-Item -Recurse src backup` | `cp -r src backup` |
-| 搜索文件内容 | `Select-String error app.log` | `grep error app.log` |
-| Tab 补全路径 | `D:\work\project\` | `/d/work/project/` |
+| 能力 | 示例 |
+| --- | --- |
+| Unix 风格路径 | `cd /d/work`、`cd ~/Desktop` |
+| 熟悉的命令 | `ls`、`cp -r`、`grep`、`touch -p` |
+| Git 补全 | `git switch fe<Tab>` |
+| 路径补全 | `/d/work/pro<Tab>` |
+| 原生提示符 | `user@host project dev ❯` |
+| 切换主题 | `upwsh theme use pure-classic` |
 
 ## 安装
 
@@ -40,6 +44,17 @@ irm https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/i
 missing   eza, dust, btm
 next      upwsh tool install eza dust btm
 ```
+
+## 快速体验
+
+```powershell
+cd /d/work
+ls
+git switch fe<Tab>
+touch -p logs/archive/app.log
+```
+
+使用 `upwsh theme use colorful-blue`，即可从默认提示符切换到连续色块主题。
 
 ## 使用路径
 
@@ -126,59 +141,42 @@ upwsh theme use "colorful-blue"
 upwsh theme use "pure-classic"
 ```
 
+| 系列 | 风格 | 预览 |
+| --- | --- | --- |
+| `pure-*` | 终端原生背景上的简洁提示符 | [pure-classic](src/theme/pure-classic.json) |
+| `colorful-*` | 连续 Powerline 色块 | [colorful-blue](src/theme/colorful-blue.json) |
+
+<table>
+<tr>
+<td><img src="docs/assets/themes/pure-classic.png" alt="pure-classic 提示符" width="100%"></td>
+<td><img src="docs/assets/themes/colorful-blue.png" alt="colorful-blue 提示符" width="100%"></td>
+</tr>
+</table>
+
+[打开交互式主题画廊](docs/assets/themes/gallery.html)，离线比较所有命令状态。
+
+<details>
+<summary>查看全部主题</summary>
+
 ### pure-* · 透明背景
 
-每张图只有一条提示符。主题名在图外。示例身份是 `user@host`，目录 `project`，分支 `dev`，失败码 `7`，耗时 `2.345s`。
-
-**[pure-classic](src/theme/pure-classic.json)** — 绿色用户/主机，黄色斜体目录，青色分支
-
-![pure-classic 提示符](docs/assets/themes/pure-classic.png)
-
-**[pure-glacier](src/theme/pure-glacier.json)** — 冰蓝目录，淡紫分支
-
-![pure-glacier 提示符](docs/assets/themes/pure-glacier.png)
-
-**[pure-ember](src/theme/pure-ember.json)** — 琥珀目录，暖白分支
-
-![pure-ember 提示符](docs/assets/themes/pure-ember.png)
-
-**[pure-quiet](src/theme/pure-quiet.json)** — 隐藏用户/主机和耗时；成功 `>`，失败 `!`
-
-![pure-quiet 提示符](docs/assets/themes/pure-quiet.png)
-
-**[pure-daylight](src/theme/pure-daylight.json)** — 深蓝、深紫，适合浅色终端背景
-
-![pure-daylight 提示符](docs/assets/themes/pure-daylight.png)
+- [pure-classic](src/theme/pure-classic.json) — 绿色用户/主机，黄色斜体目录，青色分支
+- [pure-glacier](src/theme/pure-glacier.json) — 冰蓝目录，淡紫分支
+- [pure-ember](src/theme/pure-ember.json) — 琥珀目录，暖白分支
+- [pure-quiet](src/theme/pure-quiet.json) — 隐藏用户/主机和耗时
+- [pure-daylight](src/theme/pure-daylight.json) — 深蓝、深紫，适合浅色终端背景
 
 ### colorful-* · 连续色块
 
-**[colorful-blue](src/theme/colorful-blue.json)** — 深青、湖绿、亮青、冰青
+- [colorful-blue](src/theme/colorful-blue.json) — 深青、湖绿、亮青、冰青
+- [colorful-green](src/theme/colorful-green.json) — 鼠尾草绿、抹茶绿、春芽绿、极地薄荷
+- [colorful-macaron](src/theme/colorful-macaron.json) — 香芋紫、天空蓝、湖水绿、嫩芽绿
+- [colorful-morandi](src/theme/colorful-morandi.json) — 豆沙灰、灰粉、燕麦、亚麻
+- [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) — 霓虹紫、极光蓝、荧光绿、冰蓝
+- [colorful-retro](src/theme/colorful-retro.json) — 森林暗绿、砖赭、暖棕、象牙白
+- [colorful-memphis](src/theme/colorful-memphis.json) — 亮粉、柠檬黄、青绿、极浅蓝
 
-![colorful-blue 提示符](docs/assets/themes/colorful-blue.png)
-
-**[colorful-green](src/theme/colorful-green.json)** — 鼠尾草绿、抹茶绿、春芽绿、极地薄荷
-
-![colorful-green 提示符](docs/assets/themes/colorful-green.png)
-
-**[colorful-macaron](src/theme/colorful-macaron.json)** — 香芋紫、天空蓝、湖水绿、嫩芽绿
-
-![colorful-macaron 提示符](docs/assets/themes/colorful-macaron.png)
-
-**[colorful-morandi](src/theme/colorful-morandi.json)** — 豆沙灰、灰粉、燕麦、亚麻
-
-![colorful-morandi 提示符](docs/assets/themes/colorful-morandi.png)
-
-**[colorful-cyberpunk](src/theme/colorful-cyberpunk.json)** — 霓虹紫、极光蓝、荧光绿、冰蓝
-
-![colorful-cyberpunk 提示符](docs/assets/themes/colorful-cyberpunk.png)
-
-**[colorful-retro](src/theme/colorful-retro.json)** — 森林暗绿、砖赭、暖棕、象牙白
-
-![colorful-retro 提示符](docs/assets/themes/colorful-retro.png)
-
-**[colorful-memphis](src/theme/colorful-memphis.json)** — 亮粉、柠檬黄、青绿、极浅蓝
-
-![colorful-memphis 提示符](docs/assets/themes/colorful-memphis.png)
+</details>
 
 Colorful 的用户、主机、目录、Git 使用连续色块。耗时、返回码与 `❯` 用终端默认背景。非仓库、短耗时或成功时对应段隐藏，不留多余箭头。文字对比记录在各 JSON 的 `_Comment.ContrastAdjustments`。
 
@@ -210,6 +208,17 @@ cd unixify-powershell
 upwsh install
 ```
 
+<details>
+<summary>本地、远程与源码选项</summary>
+
 本项目内的 `upwsh install` / `upwsh update` 默认 `--local`。用 `--remote` 下载，或用 `--source`、`--ref`、`--repo` 指定来源。管道安装默认 `--remote`，并读取 `UPWSH_SOURCE`、`UPWSH_REF`、`UPWSH_REPO`。
+
+```powershell
+upwsh install --source I:/ispace/unixify-powershell
+upwsh install --remote --ref dev
+upwsh update --remote
+```
+
+</details>
 
 测试、性能测量和路径转换接口维护见[开发说明](docs/development.md)。

@@ -4,27 +4,31 @@
 
 **A native Unix-style shell layer for PowerShell 7 on Windows.**
 
-[简体中文](README.zh-CN.md) · [Install](#install) · [Paths](#use-paths) · [Themes](#themes) · [Development](docs/development.md)
+[简体中文](README.zh-CN.md) · [Install](#install) · [Try it](#try-it) · [Themes](#themes) · [Development](docs/development.md)
+
+<table>
+<tr>
+<td><img src="docs/assets/themes/pure-classic.png" alt="pure-classic prompt" width="100%"></td>
+<td><img src="docs/assets/themes/colorful-blue.png" alt="colorful-blue prompt" width="100%"></td>
+</tr>
+</table>
 
 </div>
 
 A focused shell experience for people who want Unix-style paths, familiar commands, fast completion, and a prompt that stays native to PowerShell.
 
-```text
-user@host project dev ❯
-```
-
 The prompt shows the current folder, Git branch, command duration, and exit status without running Starship. Paths use `/d/work` and `~/projects`, while the shell keeps PowerShell syntax and pipelines.
 
-## At A Glance
+## What it adds
 
-| Task | PowerShell | With unixify-powershell |
-| --- | --- | --- |
-| Change directory | `cd D:\work` | `cd /d/work` |
-| List files | `Get-ChildItem` | `ls` / `ll` (via eza) |
-| Copy a directory | `Copy-Item -Recurse src backup` | `cp -r src backup` |
-| Search a file | `Select-String error app.log` | `grep error app.log` |
-| Complete a path with Tab | `D:\work\project\` | `/d/work/project/` |
+| Capability | Example |
+| --- | --- |
+| Unix-style paths | `cd /d/work`, `cd ~/Desktop` |
+| Familiar commands | `ls`, `cp -r`, `grep`, `touch -p` |
+| Git completion | `git switch fe<Tab>` |
+| Path completion | `/d/work/pro<Tab>` |
+| Native prompt | `user@host project dev ❯` |
+| Theme switching | `upwsh theme use pure-classic` |
 
 ## Install
 
@@ -40,6 +44,17 @@ This installs into `~/.config/upwsh`, adds `upwsh` to Path, defines `upwsh` in t
 missing   eza, dust, btm
 next      upwsh tool install eza dust btm
 ```
+
+## Try it
+
+```powershell
+cd /d/work
+ls
+git switch fe<Tab>
+touch -p logs/archive/app.log
+```
+
+Use `upwsh theme use colorful-blue` to switch from the default prompt to connected color blocks.
 
 ## Use paths
 
@@ -126,59 +141,42 @@ upwsh theme use "colorful-blue"
 upwsh theme use "pure-classic"
 ```
 
+| Family | Character | Preview |
+| --- | --- | --- |
+| `pure-*` | Minimal prompt on the terminal background | [pure-classic](src/theme/pure-classic.json) |
+| `colorful-*` | Connected Powerline color blocks | [colorful-blue](src/theme/colorful-blue.json) |
+
+<table>
+<tr>
+<td><img src="docs/assets/themes/pure-classic.png" alt="pure-classic prompt" width="100%"></td>
+<td><img src="docs/assets/themes/colorful-blue.png" alt="colorful-blue prompt" width="100%"></td>
+</tr>
+</table>
+
+[Open the interactive theme gallery](docs/assets/themes/gallery.html) to compare all command states offline.
+
+<details>
+<summary>All themes</summary>
+
 ### pure-* · transparent backgrounds
 
-Each image is one prompt. The theme name is the heading, not part of the picture. Sample identity is `user@host`, folder `project`, branch `dev`, exit `7`, duration `2.345s`.
-
-**[pure-classic](src/theme/pure-classic.json)** — green user/host, yellow italic folder, cyan branch
-
-![pure-classic prompt](docs/assets/themes/pure-classic.png)
-
-**[pure-glacier](src/theme/pure-glacier.json)** — ice-blue folder, lavender branch
-
-![pure-glacier prompt](docs/assets/themes/pure-glacier.png)
-
-**[pure-ember](src/theme/pure-ember.json)** — amber folder, warm-white branch
-
-![pure-ember prompt](docs/assets/themes/pure-ember.png)
-
-**[pure-quiet](src/theme/pure-quiet.json)** — hides user/host and duration; `>` on success, `!` on failure
-
-![pure-quiet prompt](docs/assets/themes/pure-quiet.png)
-
-**[pure-daylight](src/theme/pure-daylight.json)** — deep blue and purple for a light terminal background
-
-![pure-daylight prompt](docs/assets/themes/pure-daylight.png)
+- [pure-classic](src/theme/pure-classic.json) — green user/host, yellow italic folder, cyan branch
+- [pure-glacier](src/theme/pure-glacier.json) — ice-blue folder, lavender branch
+- [pure-ember](src/theme/pure-ember.json) — amber folder, warm-white branch
+- [pure-quiet](src/theme/pure-quiet.json) — hides user/host and duration
+- [pure-daylight](src/theme/pure-daylight.json) — deep blue and purple for a light terminal background
 
 ### colorful-* · connected color blocks
 
-**[colorful-blue](src/theme/colorful-blue.json)** — deep teal, lake green, bright teal, ice teal
+- [colorful-blue](src/theme/colorful-blue.json) — deep teal, lake green, bright teal, ice teal
+- [colorful-green](src/theme/colorful-green.json) — sage, matcha, spring green, pale mint
+- [colorful-macaron](src/theme/colorful-macaron.json) — lilac, sky blue, lake green, soft green
+- [colorful-morandi](src/theme/colorful-morandi.json) — sage grey, dusty pink, oat, linen
+- [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) — neon purple, electric blue, aqua, ice blue
+- [colorful-retro](src/theme/colorful-retro.json) — forest green, ochre, warm tan, ivory
+- [colorful-memphis](src/theme/colorful-memphis.json) — pink, lemon yellow, cyan, pale blue
 
-![colorful-blue prompt](docs/assets/themes/colorful-blue.png)
-
-**[colorful-green](src/theme/colorful-green.json)** — sage, matcha, spring green, pale mint
-
-![colorful-green prompt](docs/assets/themes/colorful-green.png)
-
-**[colorful-macaron](src/theme/colorful-macaron.json)** — lilac, sky blue, lake green, soft green
-
-![colorful-macaron prompt](docs/assets/themes/colorful-macaron.png)
-
-**[colorful-morandi](src/theme/colorful-morandi.json)** — sage grey, dusty pink, oat, linen
-
-![colorful-morandi prompt](docs/assets/themes/colorful-morandi.png)
-
-**[colorful-cyberpunk](src/theme/colorful-cyberpunk.json)** — neon purple, electric blue, aqua, ice blue
-
-![colorful-cyberpunk prompt](docs/assets/themes/colorful-cyberpunk.png)
-
-**[colorful-retro](src/theme/colorful-retro.json)** — forest green, ochre, warm tan, ivory
-
-![colorful-retro prompt](docs/assets/themes/colorful-retro.png)
-
-**[colorful-memphis](src/theme/colorful-memphis.json)** — pink, lemon yellow, cyan, pale blue
-
-![colorful-memphis prompt](docs/assets/themes/colorful-memphis.png)
+</details>
 
 Colorful uses connected user, host, folder and Git blocks. Duration, exit code and `❯` stay on the terminal background. Missing Git, short commands and successful commands hide those segments without leftover arrows. Foreground contrast notes are in each JSON's `_Comment.ContrastAdjustments`.
 
@@ -210,6 +208,17 @@ cd unixify-powershell
 upwsh install
 ```
 
+<details>
+<summary>Local, remote, and source options</summary>
+
 `upwsh install` and `upwsh update` from this project default to `--local`. Use `--remote` to download, or override the source with `--source`, `--ref`, or `--repo`. Piped installs default to `--remote` and honor `UPWSH_SOURCE`, `UPWSH_REF`, and `UPWSH_REPO`.
+
+```powershell
+upwsh install --source I:/ispace/unixify-powershell
+upwsh install --remote --ref dev
+upwsh update --remote
+```
+
+</details>
 
 See [Development](docs/development.md) for tests, performance benchmarks, and converter maintenance.
