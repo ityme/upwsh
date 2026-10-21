@@ -304,6 +304,13 @@ function Get-UpwshSessionProfilePath {
     }
 }
 
+function Invoke-UpwshSessionProfile {
+    $sessionProfile = Get-UpwshSessionProfilePath
+    if ($sessionProfile) {
+        & $sessionProfile
+    }
+}
+
 function Invoke-UpwshTool {
     param($Parsed)
 
@@ -385,6 +392,9 @@ function Invoke-UpwshSetup {
         throw "missing $($Parsed.Command) script: $script"
     }
     $setupArgs = @($Parsed.Rest)
+    if ($Parsed.Command -in @('install', 'update')) {
+        $setupArgs += '--skip-load'
+    }
     & $script @setupArgs
 }
 
@@ -427,17 +437,21 @@ if ($parsed.Command -eq 'theme') {
 
 if ($parsed.Command -in @('load', 'unload')) {
     Invoke-UpwshLoad -Parsed $parsed
-    $sessionProfile = if ($parsed.Command -eq 'load') { Get-UpwshSessionProfilePath }
     Complete-Upwsh 0 $scriptInvocation
-    if ($sessionProfile) {
-        & $sessionProfile
+    if ($parsed.Command -eq 'load') {
+        Invoke-UpwshSessionProfile
     }
     return
 }
 
 if ($parsed.Command -in @('install', 'uninstall', 'update')) {
     Invoke-UpwshSetup -Parsed $parsed
-    Complete-Upwsh $global:LASTEXITCODE $scriptInvocation
+    $setupCode = $global:LASTEXITCODE
+    if ($parsed.Command -in @('install', 'update') -and $setupCode -eq 0) {
+        Invoke-UpwshLoad -Parsed ([pscustomobject]@{ Command = 'load' })
+        Invoke-UpwshSessionProfile
+    }
+    Complete-Upwsh $setupCode $scriptInvocation
     return
 }
 

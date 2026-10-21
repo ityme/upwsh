@@ -50,7 +50,8 @@ function New-InstallParseResult {
         Remote = $false
         Ref    = $null
         Repo   = $null
-        Source = $null
+        Source   = $null
+        SkipLoad = $false
     }
 }
 
@@ -109,6 +110,10 @@ function ConvertFrom-InstallArguments {
                 }
                 $result.Source = [string]$tokens[$index + 1]
                 $index += 2
+            }
+            '^--skip-load$' {
+                $result.SkipLoad = $true
+                $index++
             }
             default {
                 $result.Help = $true
@@ -555,13 +560,15 @@ try {
         Import-Module $commandPath -Global -Force -DisableNameChecking
     }
     if (-not $script:UpdateOnly) {
-        $loader = Join-Path $directory 'script\upwsh.ps1'
-        if (-not [IO.File]::Exists($loader)) {
-            throw "missing $loader"
-        }
-        & $loader load
         foreach ($line in @(Get-MissingCommandToolHint -InstallHome $directory)) {
             Write-Output $line
+        }
+        if (-not $parsed.SkipLoad) {
+            $loader = Join-Path $directory 'script\upwsh.ps1'
+            if (-not [IO.File]::Exists($loader)) {
+                throw "missing $loader"
+            }
+            & $loader load
         }
     }
     Complete-Install 0 $scriptInvocation

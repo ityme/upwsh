@@ -65,7 +65,8 @@ function Assert-Contains {
 function Invoke-Upwsh {
     param(
         [string[]]$Tokens = @(),
-        [switch]$LoadSession
+        [switch]$LoadSession,
+        [switch]$ViaFunction
     )
 
     $previous = $global:LASTEXITCODE
@@ -84,7 +85,14 @@ function Invoke-Upwsh {
             $env:UPWSH_SKIP_SESSION_LOAD = '1'
         }
         $global:LASTEXITCODE = 0
-        $output = & $upwsh @Tokens 2>&1 | Out-String
+        if ($ViaFunction) {
+            $output = & {
+                function upwsh { & $upwsh @args }
+                upwsh @Tokens
+            } 2>&1 | Out-String
+        } else {
+            $output = & $upwsh @Tokens 2>&1 | Out-String
+        }
         [pscustomobject]@{
             Text = $output
             Code = $global:LASTEXITCODE
@@ -186,6 +194,14 @@ try {
         $text = [IO.File]::ReadAllText($hook)
         Assert-Contains $text '# >>> unixify-powershell >>>'
         Assert-Contains $text $installedProfile
+    }
+
+    Invoke-UpwshTest 'install through the loaded upwsh function completes after session load' {
+        $result = Invoke-Upwsh -Tokens @('install') -LoadSession -ViaFunction
+        Assert-Equal $result.Code 0
+        Assert-True ($result.Text -notmatch 'Get-MissingCommandToolHint') 'install leaked the post-load helper error'
+        Assert-True ($result.Text -notmatch 'Complete-Install') 'install leaked the completion helper error'
+        Assert-Contains $result.Text 'state     installed'
     }
 
     Invoke-UpwshTest 'edit opens user-settings.ps1 in nvim' {
