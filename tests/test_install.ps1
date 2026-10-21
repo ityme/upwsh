@@ -166,7 +166,7 @@ try {
         Assert-Contains $result.Text $projectSrc
     }
 
-    Invoke-InstallTest 'installed command downloads outside a project and honors explicit ref inside one' {
+    Invoke-InstallTest 'install script downloads outside a project and honors explicit ref' {
         $archive = Join-Path $root 'source.zip'
         [IO.Compression.ZipFile]::CreateFromDirectory($project, $archive)
         $command = @'
@@ -177,14 +177,14 @@ function Invoke-WebRequest {
     Write-Host "DOWNLOAD:$Uri"
     Copy-Item -LiteralPath ARCHIVE -Destination $OutFile
 }
-& ENTRY install OPTIONS
+& ENTRY --remote OPTIONS
 exit $LASTEXITCODE
 '@
-        $command = $command.Replace('ARCHIVE', (ConvertTo-TestLiteral $archive)).Replace('ENTRY', (ConvertTo-TestLiteral $installedCommand))
-        $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $command.Replace('OPTIONS', '--remote')
+        $command = $command.Replace('ARCHIVE', (ConvertTo-TestLiteral $archive)).Replace('ENTRY', (ConvertTo-TestLiteral $installer))
+        $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $command.Replace('OPTIONS', '')
         Assert-True ($result.Code -eq 0) $result.Text
         Assert-Contains $result.Text '/archive/refs/heads/main.zip'
-        $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $command.Replace('OPTIONS', '--remote --ref dev') -WorkingDirectory $project
+        $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $command.Replace('OPTIONS', '--ref dev') -WorkingDirectory $project
         Assert-True ($result.Code -eq 0) $result.Text
         Assert-Contains $result.Text '/archive/refs/heads/dev.zip'
     }

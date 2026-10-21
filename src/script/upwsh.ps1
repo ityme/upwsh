@@ -394,7 +394,32 @@ function Invoke-UpwshSetup {
     if ($Parsed.Command -in @('install', 'update')) {
         $setupArgs += '--skip-load'
     }
-    & $script @setupArgs
+
+    # Lifecycle scripts run in a clean process so their private functions and script scope
+    # cannot collide with the currently loaded upwsh function.
+    $pwsh = (Get-Process -Id $PID).Path
+    & $pwsh -NoLogo -NoProfile -File $script @setupArgs
+}
+
+function Invoke-UpwshPostSetup {
+    param(
+        [Parameter(Mandatory)][string]$Command,
+        [Parameter(Mandatory)][int]$Code
+    )
+
+    if ($Code -ne 0) { return }
+    if ($Command -in @('install', 'update')) {
+        Add-UpwshUserEnvironment
+        Invoke-UpwshLoad -Parsed ([pscustomobject]@{ Command = 'load' })
+        Invoke-UpwshSessionProfile
+        return
+    }
+    if ($Command -eq 'uninstall') {
+        Remove-UpwshUserEnvironment
+        Remove-Item Function:global:PSConsoleHostReadLine -ErrorAction SilentlyContinue
+        Remove-Item Function:global:upwsh -ErrorAction SilentlyContinue
+        Restore-UpwshDefaultPrompt
+    }
 }
 
 function Complete-Upwsh {
@@ -446,10 +471,7 @@ if ($parsed.Command -in @('load', 'unload')) {
 if ($parsed.Command -in @('install', 'uninstall', 'update')) {
     Invoke-UpwshSetup -Parsed $parsed
     $setupCode = $global:LASTEXITCODE
-    if ($parsed.Command -in @('install', 'update') -and $setupCode -eq 0) {
-        Invoke-UpwshLoad -Parsed ([pscustomobject]@{ Command = 'load' })
-        Invoke-UpwshSessionProfile
-    }
+    Invoke-UpwshPostSetup -Command $parsed.Command -Code $setupCode
     Complete-Upwsh $setupCode $scriptInvocation
     return
 }
