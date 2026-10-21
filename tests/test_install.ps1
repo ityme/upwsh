@@ -37,7 +37,7 @@ function Assert-Contains {
 
 function Install-Fixture {
     param([string]$UserHome)
-    $result = Invoke-UpwshTestProcess -UserHome $UserHome -File $installer
+    $result = Invoke-UpwshTestProcess -UserHome $UserHome -File $installer -Arguments @('--local')
     Assert-Equal $result.Code 0
     return $result
 }
@@ -78,7 +78,7 @@ try {
         foreach ($name in @('eza.exe', 'dust.exe', 'btm.exe')) {
             [IO.File]::WriteAllText((Join-Path $toolDir $name), 'stub')
         }
-        $result = Invoke-UpwshTestProcess -UserHome $presentUser -File $installer -Environment @{
+        $result = Invoke-UpwshTestProcess -UserHome $presentUser -File $installer -Arguments @('--local') -Environment @{
             PATH = "$toolDir;$env:PATH"
         }
         Assert-Equal $result.Code 0
@@ -154,14 +154,14 @@ try {
     }
 
     Invoke-InstallTest 'installed upwsh install detects the project in cwd' {
-        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('install') -WorkingDirectory $project
+        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('install', '--local') -WorkingDirectory $project
         Assert-Equal $result.Code 0
         Assert-Contains $result.Text $projectSrc
         Assert-Equal ([IO.File]::ReadAllText((Join-Path $installHome 'local-source.txt'))) 'from-cwd'
     }
 
     Invoke-InstallTest 'upwsh install detects the project from a subdirectory' {
-        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('install') -WorkingDirectory (Join-Path $projectSrc 'lib')
+        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('install', '--local') -WorkingDirectory (Join-Path $projectSrc 'lib')
         Assert-Equal $result.Code 0
         Assert-Contains $result.Text $projectSrc
     }
@@ -218,7 +218,7 @@ exit $LASTEXITCODE
         [IO.File]::WriteAllText((Join-Path $installHome 'obsolete.ps1'), '# old managed file')
         [IO.File]::WriteAllText((Join-Path $projectSrc 'local-source.txt'), 'updated')
         $beforeHook = [IO.File]::ReadAllText($hook)
-        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('update') -WorkingDirectory $project -Environment @{ UPWSH_HOME = $projectSrc }
+        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('update', '--local') -WorkingDirectory $project -Environment @{ UPWSH_HOME = $projectSrc }
         Assert-Equal $result.Code 0
         Assert-Equal ([IO.File]::ReadAllText($settings)) '# keep user settings'
         Assert-Equal ([IO.File]::ReadAllText($tool)) 'keep installed tool'
@@ -402,7 +402,7 @@ function Invoke-WebRequest {
 Write-Output ('AFTER_IEX:' + $LASTEXITCODE)
 '@
         $command = $command.Replace('SCRIPTS', (ConvertTo-TestLiteral (Join-Path $runtimeRoot 'script'))).Replace('UPDATER', (ConvertTo-TestLiteral $updater))
-        $result = Invoke-UpwshTestProcess -UserHome $pipeUser -Command $command -WorkingDirectory $project
+        $result = Invoke-UpwshTestProcess -UserHome $pipeUser -Command $command -WorkingDirectory $project -Environment @{ UPWSH_SOURCE = $project }
         Assert-Contains $result.Text 'AFTER_IEX:0'
         Assert-Contains $result.Text $projectSrc
         Assert-Equal ([IO.File]::ReadAllText($pipeSettings)) '# keep piped settings'
@@ -444,14 +444,14 @@ if ($LASTEXITCODE -ne 0) { throw 'install inherited update-only mode' }
 
     Invoke-InstallTest 'installed -File update preserves cwd across relaunch' {
         Install-Fixture $userHome | Out-Null
-        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('update') -WorkingDirectory $project -Environment @{ UPWSH_SKIP_RELAUNCH = $null }
+        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('update', '--local') -WorkingDirectory $project -Environment @{ UPWSH_SKIP_RELAUNCH = $null }
         Assert-Equal $result.Code 0
         Assert-Equal ([IO.File]::ReadAllText((Join-Path $installHome 'local-source.txt'))) 'updated'
     }
 
     Invoke-InstallTest 'installed -File update reports child failure and keeps the installation' {
         $before = [IO.File]::ReadAllText((Join-Path $installHome 'local-source.txt'))
-        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('update', '--source', (Join-Path $root 'missing')) -Environment @{ UPWSH_SKIP_RELAUNCH = $null }
+        $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('update', '--local', '--source', (Join-Path $root 'missing')) -Environment @{ UPWSH_SKIP_RELAUNCH = $null }
         Assert-Equal $result.Code 1
         Assert-Contains $result.Text 'missing profile.ps1'
         Assert-Equal ([IO.File]::ReadAllText((Join-Path $installHome 'local-source.txt'))) $before

@@ -108,7 +108,7 @@ Changes made in another window, such as switching a branch in the same working t
 | `upwsh uninstall` | Unload, then remove the installation; keep a changed `user-settings.ps1`, delete themes |
 | `upwsh edit` | Open `~/.config/upwsh/user-settings.ps1` in nvim, then reload this pwsh |
 
-`upwsh install` and `upwsh update` default to `--local` in this repository. `irm | iex` defaults to `--remote`. Install loads the current pwsh; uninstall unloads it, then deletes the runtime. A changed `user-settings.ps1` is kept; themes are not.
+`upwsh install` and `upwsh update` default to the remote release. Use `--local` when developing from this project. Install and update load the current pwsh; uninstall unloads it, then deletes the runtime. A changed `user-settings.ps1` is kept; themes are not.
 
 The install directory is fixed at `~/.config/upwsh`; `UPWSH_HOME` records it. The native prompt in `src/lib/prompt.psm1` follows the current folder and Git branch. Run `upwsh --help` for command help.
 
@@ -190,13 +190,13 @@ Commented examples for `w`, `t`, `i`, `d`, and `gs` are in `user-settings.ps1`. 
 ```powershell
 git clone https://github.com/ityme/unixify-powershell.git
 cd unixify-powershell
-upwsh install
+upwsh install --local
 ```
 
 <details>
 <summary>Local, remote, and source options</summary>
 
-`upwsh install` and `upwsh update` from this project default to `--local`. Use `--remote` to download, or override the source with `--source`, `--ref`, or `--repo`. Piped installs default to `--remote` and honor `UPWSH_SOURCE`, `UPWSH_REF`, and `UPWSH_REPO`.
+`upwsh install` and `upwsh update` default to the remote release. Use `--local` for the current project, or override the source with `--source`, `--ref`, or `--repo`. Piped installs also default to `--remote` and honor `UPWSH_SOURCE`, `UPWSH_REF`, and `UPWSH_REPO`.
 
 ```powershell
 upwsh install --source I:/ispace/unixify-powershell

@@ -34,7 +34,7 @@ A network install can run:
 
 Environment: UPWSH_REF UPWSH_REPO UPWSH_SOURCE
 Install or repair ~/.config/upwsh. UPWSH_HOME records this fixed location.
-Install then runs upwsh load. upwsh install defaults to --local. irm | iex defaults to --remote.
+Install then loads the current pwsh. Install and update default to --remote; use --local for a project source.
 The upwsh command is UPWSH_HOME\\bin\\upwsh.cmd.
 CLI tools go in UPWSH_HOME\\tool\\bin.
 After install, missing eza, dust, or btm are listed with upwsh tool install.
@@ -526,9 +526,10 @@ try {
             return
         }
     }
-    $piped = -not $PSCommandPath
-    $wantRemote = $parsed.Remote -or [bool]$ref -or [bool]$parsed.Repo -or [bool]$env:UPWSH_REPO -or
-        ($piped -and -not $parsed.Local -and -not $source)
+    $wantRemote = -not $parsed.Local -and -not $source
+    if ($parsed.Remote -or [bool]$ref -or [bool]$parsed.Repo -or [bool]$env:UPWSH_REPO) {
+        $wantRemote = $true
+    }
     $sibling = $null
     if (-not $source -and -not $wantRemote) {
         $sibling = Get-LocalProjectRuntimeRoot

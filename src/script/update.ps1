@@ -32,8 +32,8 @@ try {
     if ($wantsHelp) {
         Invoke-UpwshUpdateInstall -Path $install -Tokens $updateArguments | ForEach-Object {
             $_.Replace('install.ps1', 'update.ps1').Replace('install this runtime', 'update this runtime').Replace(
-                'Install then runs upwsh load. upwsh install defaults to --local. irm | iex defaults to --remote.',
-                'Requires an installed runtime; preserves tools, user-settings.ps1, extra theme JSON, and startup loading state. Update does not change the profile hook.'
+                'Install then loads the current pwsh. Install and update default to --remote; use --local for a project source.',
+                'Requires an installed runtime; preserves tools, user-settings.ps1, extra theme JSON, and startup loading state.'
             )
         }
     } else {

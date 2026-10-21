@@ -108,7 +108,7 @@ Git 单词唯一匹配时，补全后自动加空格。每段都只有一个匹�
 | `upwsh uninstall` | 先 unload，再删除安装；改过的 `user-settings.ps1` 留下，主题不留 |
 | `upwsh edit` | 用 nvim 打开 `~/.config/upwsh/user-settings.ps1`，退出后重载当前 pwsh |
 
-仓库内的 `upwsh install` / `upwsh update` 默认 `--local`。`irm | iex` 默认 `--remote`。安装会加载当前窗口；卸载会先 unload，再删除运行时。改过的 `user-settings.ps1` 留下，主题不留。
+`upwsh install` / `upwsh update` 默认使用远程版本；开发当前项目时使用 `--local`。安装和更新都会加载当前窗口；卸载会先 unload，再删除运行时。改过的 `user-settings.ps1` 留下，主题不留。
 
 安装目录固定为 `~/.config/upwsh`，`UPWSH_HOME` 记录这个位置。原生提示符由 `src/lib/prompt.psm1` 提供，会随当前文件夹和 Git 分支变化。命令帮助见 `upwsh --help`。
 
@@ -190,13 +190,13 @@ function global:work { cd (winpath '/d/my work') }
 ```powershell
 git clone https://github.com/ityme/unixify-powershell.git
 cd unixify-powershell
-upwsh install
+upwsh install --local
 ```
 
 <details>
 <summary>本地、远程与源码选项</summary>
 
-本项目内的 `upwsh install` / `upwsh update` 默认 `--local`。用 `--remote` 下载，或用 `--source`、`--ref`、`--repo` 指定来源。管道安装默认 `--remote`，并读取 `UPWSH_SOURCE`、`UPWSH_REF`、`UPWSH_REPO`。
+`upwsh install` / `upwsh update` 默认使用远程版本。开发当前项目时使用 `--local`，也可以用 `--source`、`--ref`、`--repo` 指定来源。管道安装同样默认 `--remote`，并读取 `UPWSH_SOURCE`、`UPWSH_REF`、`UPWSH_REPO`。
 
 ```powershell
 upwsh install --source I:/ispace/unixify-powershell
