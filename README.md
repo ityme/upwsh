@@ -1,18 +1,22 @@
+<div align="center">
+
 # unixify-powershell
 
-A native Unix-style prompt, paths, commands, and Tab completion for **PowerShell 7 on Windows**.
+**A native Unix-style shell layer for PowerShell 7 on Windows.**
 
-The prompt follows this shape:
+[简体中文](README.zh-CN.md) · [Install](#install) · [Paths](#use-paths) · [Themes](#themes) · [Development](docs/development.md)
+
+</div>
+
+A focused shell experience for people who want Unix-style paths, familiar commands, fast completion, and a prompt that stays native to PowerShell.
 
 ```text
 user@host project dev ❯
 ```
 
-The path segment shows only the current folder name (`~` at home); outside a Git repository, the branch is omitted. Colors and `❯` follow the Starship visual reference: a failed command adds its numeric error code in red, and commands lasting at least two seconds show their duration. The native renderer reads local `.git/HEAD` first, using Git to locate it in subdirectories and worktrees. It does not run Starship.
+The prompt shows the current folder, Git branch, command duration, and exit status without running Starship. Paths use `/d/work` and `~/projects`, while the shell keeps PowerShell syntax and pipelines.
 
-[简体中文](README.zh-CN.md)
-
-Use `/d/work` and `~/projects`, run familiar commands such as `ls`, `cp -r`, and `grep`, and complete paths with forward slashes. Your shell still uses PowerShell syntax and pipelines.
+## At A Glance
 
 | Task | PowerShell | With unixify-powershell |
 | --- | --- | --- |

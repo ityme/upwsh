@@ -1,18 +1,22 @@
+<div align="center">
+
 # unixify-powershell
 
-为 **Windows 上的 PowerShell 7** 提供原生 Unix 风格提示符、路径、命令和 Tab 补全。
+**为 Windows 上的 PowerShell 7 提供原生 Unix 风格的 shell 体验。**
 
-提示符形如：
+[English](README.md) · [安装](#安装) · [路径](#使用路径) · [主题](#主题) · [开发说明](docs/development.md)
+
+</div>
+
+让 PowerShell 拥有 Unix 风格路径、熟悉的文件命令、快速补全，以及保持原生质感的提示符。
 
 ```text
 user@host project dev ❯
 ```
 
-路径只显示当前文件夹名，用户主目录显示 `~`，非 Git 仓库省略分支。颜色和 `❯` 按 Starship 样式参考：失败时显示红色数字错误码，耗时达到 2 秒时显示执行时间。原生提示符优先读取当前目录的 `.git/HEAD`，在子目录和 worktree 中交给 Git 定位，不运行 Starship。
+提示符显示当前文件夹、Git 分支、命令耗时和退出状态，不运行 Starship。路径使用 `/d/work`、`~/projects`，语法和管道仍使用 PowerShell。
 
-[English](README.md)
-
-用 `/d/work`、`~/projects` 表示路径，用 `ls`、`cp -r`、`grep` 等熟悉的命令操作文件，Tab 也补全为正斜杠路径。语法和管道仍使用 PowerShell。
+## 核心体验
 
 | 操作 | 原生 PowerShell | 使用 unixify-powershell |
 | --- | --- | --- |
