@@ -364,6 +364,29 @@ Set-Alias -Name user_settings_marker -Value Get-Date -Scope Global -Force
             Test-Path -LiteralPath (Join-Path $work $literalPath)
         ) 'touch did not preserve wildcard characters in a literal filename'
     }
+    Invoke-CompletionTest 'touch does not create missing parents without -p' {
+        $missingPath = Join-Path $work 'missing-parent/file.txt'
+        try {
+            touch 'missing-parent/file.txt' 2>$null
+        } catch {
+            # The command intentionally reports a nonzero status for this case.
+        }
+        Assert-True (
+            -not (Test-Path -LiteralPath $missingPath)
+        ) 'touch created a file without its parent directory'
+    }
+    Invoke-CompletionTest 'touch -p creates missing parent directories' {
+        touch -p 'nested/deep/file.txt'
+        Assert-True (
+            Test-Path -LiteralPath (Join-Path $work 'nested\deep\file.txt')
+        ) 'touch -p did not create the file'
+    }
+    Invoke-CompletionTest 'touch -p preserves existing file content' {
+        $existingPath = Join-Path $work 'nested\existing.txt'
+        [IO.File]::WriteAllText($existingPath, 'keep')
+        touch -p 'nested/existing.txt'
+        Assert-Equal ([IO.File]::ReadAllText($existingPath)) 'keep'
+    }
     Invoke-CompletionTest 'mkdir preserves wildcard characters in a literal directory' {
         $literalDirectory = 'literal-[dir]'
         mkdir $literalDirectory

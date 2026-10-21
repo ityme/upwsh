@@ -40,21 +40,52 @@ function Invoke-Eza {
     & eza '--time-style=+%Y-%m-%d %H:%M:%S' @Options @windowsArguments
 }
 
-# 用途：创建空文件；文件已存在时只更新最后修改时间。
-# 示例：touch notes.txt
+# 用途：创建空文件；文件已存在时只更新最后修改时间；-p 允许创建缺失的父目录。
+# 示例：touch notes.txt；touch -p logs/archive/app.log
 function global:touch {
-    param(
-        [Parameter(Mandatory, Position = 0, ValueFromRemainingArguments)]
-        [string[]]$Path
-    )
+    try {
+        $parsed = ConvertFrom-UnixArguments -Arguments @($args) -AllowedOptions @('p')
+    } catch {
+        $global:LASTEXITCODE = 2
+        Write-Error $_
+        return
+    }
 
-    foreach ($item in @(ConvertTo-WindowsPathOperands $Path)) {
-        if (Test-Path -LiteralPath $item) {
-            (Get-Item -LiteralPath $item).LastWriteTime = Get-Date
-        } else {
-            [IO.File]::WriteAllText((Resolve-WindowsPath $item), '')
+    $paths = @(ConvertTo-WindowsPathOperands $parsed.Operands)
+    if ($paths.Count -eq 0) {
+        $global:LASTEXITCODE = 2
+        Write-Error 'Usage: touch [-p] PATH...'
+        return
+    }
+
+    $status = 0
+    foreach ($item in $paths) {
+        try {
+            $windowsPath = Resolve-WindowsPath $item
+            if (Test-Path -LiteralPath $windowsPath) {
+                (Get-Item -LiteralPath $windowsPath -ErrorAction Stop).LastWriteTime = Get-Date
+                continue
+            }
+
+            if ($parsed.Options.Contains('p')) {
+                $parent = [IO.Path]::GetDirectoryName($windowsPath)
+                if (
+                    $parent -and
+                    -not (Test-Path -LiteralPath $parent -PathType Container)
+                ) {
+                    # Same recursive operation used by mkdir -p, without invoking a nested command.
+                    [IO.Directory]::CreateDirectory($parent) | Out-Null
+                }
+            }
+
+            [IO.File]::WriteAllText($windowsPath, '')
+        } catch {
+            $status = 1
+            Write-Error "touch: cannot create or update '$item': $($_.Exception.Message)"
         }
     }
+
+    $global:LASTEXITCODE = $status
 }
 
 # 用途：创建目录并立即进入该目录。
