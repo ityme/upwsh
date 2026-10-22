@@ -8,7 +8,7 @@
 
 | `pure-classic` | `colorful-blue` |
 | --- | --- |
-| ![pure-classic 提示符](docs/assets/themes/readme/pure-classic.png) | ![colorful-blue 提示符](docs/assets/themes/readme/colorful-blue.png) |
+| ![pure-classic 提示符](docs/assets/themes/pure-classic.png) | ![colorful-blue 提示符](docs/assets/themes/colorful-blue.png) |
 
 提示符显示当前文件夹、Git 分支、命令耗时和退出状态，不运行 Starship。路径使用 `/d/work`、`~/projects`，语法和管道仍使用 PowerShell。
 
@@ -145,23 +145,23 @@ upwsh theme use "pure-classic"
 
 | 主题 | 预览 |
 | --- | --- |
-| [pure-classic](src/theme/pure-classic.json) | ![pure-classic 提示符](docs/assets/themes/readme/pure-classic.png) |
-| [pure-glacier](src/theme/pure-glacier.json) | ![pure-glacier 提示符](docs/assets/themes/readme/pure-glacier.png) |
-| [pure-ember](src/theme/pure-ember.json) | ![pure-ember 提示符](docs/assets/themes/readme/pure-ember.png) |
-| [pure-quiet](src/theme/pure-quiet.json) | ![pure-quiet 提示符](docs/assets/themes/readme/pure-quiet.png) |
-| [pure-daylight](src/theme/pure-daylight.json) | ![pure-daylight 提示符](docs/assets/themes/readme/pure-daylight.png) |
+| [pure-classic](src/theme/pure-classic.json) | ![pure-classic 提示符](docs/assets/themes/pure-classic.png) |
+| [pure-glacier](src/theme/pure-glacier.json) | ![pure-glacier 提示符](docs/assets/themes/pure-glacier.png) |
+| [pure-ember](src/theme/pure-ember.json) | ![pure-ember 提示符](docs/assets/themes/pure-ember.png) |
+| [pure-quiet](src/theme/pure-quiet.json) | ![pure-quiet 提示符](docs/assets/themes/pure-quiet.png) |
+| [pure-daylight](src/theme/pure-daylight.json) | ![pure-daylight 提示符](docs/assets/themes/pure-daylight.png) |
 
 ### colorful-* · 连续色块
 
 | 主题 | 预览 |
 | --- | --- |
-| [colorful-blue](src/theme/colorful-blue.json) | ![colorful-blue 提示符](docs/assets/themes/readme/colorful-blue.png) |
-| [colorful-green](src/theme/colorful-green.json) | ![colorful-green 提示符](docs/assets/themes/readme/colorful-green.png) |
-| [colorful-macaron](src/theme/colorful-macaron.json) | ![colorful-macaron 提示符](docs/assets/themes/readme/colorful-macaron.png) |
-| [colorful-morandi](src/theme/colorful-morandi.json) | ![colorful-morandi 提示符](docs/assets/themes/readme/colorful-morandi.png) |
-| [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) | ![colorful-cyberpunk 提示符](docs/assets/themes/readme/colorful-cyberpunk.png) |
-| [colorful-retro](src/theme/colorful-retro.json) | ![colorful-retro 提示符](docs/assets/themes/readme/colorful-retro.png) |
-| [colorful-memphis](src/theme/colorful-memphis.json) | ![colorful-memphis 提示符](docs/assets/themes/readme/colorful-memphis.png) |
+| [colorful-blue](src/theme/colorful-blue.json) | ![colorful-blue 提示符](docs/assets/themes/colorful-blue.png) |
+| [colorful-green](src/theme/colorful-green.json) | ![colorful-green 提示符](docs/assets/themes/colorful-green.png) |
+| [colorful-macaron](src/theme/colorful-macaron.json) | ![colorful-macaron 提示符](docs/assets/themes/colorful-macaron.png) |
+| [colorful-morandi](src/theme/colorful-morandi.json) | ![colorful-morandi 提示符](docs/assets/themes/colorful-morandi.png) |
+| [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) | ![colorful-cyberpunk 提示符](docs/assets/themes/colorful-cyberpunk.png) |
+| [colorful-retro](src/theme/colorful-retro.json) | ![colorful-retro 提示符](docs/assets/themes/colorful-retro.png) |
+| [colorful-memphis](src/theme/colorful-memphis.json) | ![colorful-memphis 提示符](docs/assets/themes/colorful-memphis.png) |
 
 Colorful 的用户、主机、目录、Git 使用连续色块。耗时、返回码与 `❯` 用终端默认背景。非仓库、短耗时或成功时对应段隐藏，不留多余箭头。文字对比记录在各 JSON 的 `_Comment.ContrastAdjustments`。
 

@@ -8,7 +8,7 @@
 
 | `pure-classic` | `colorful-blue` |
 | --- | --- |
-| ![pure-classic prompt](docs/assets/themes/readme/pure-classic.png) | ![colorful-blue prompt](docs/assets/themes/readme/colorful-blue.png) |
+| ![pure-classic prompt](docs/assets/themes/pure-classic.png) | ![colorful-blue prompt](docs/assets/themes/colorful-blue.png) |
 
 The prompt shows the current folder, Git branch, command duration, and exit status without running Starship. Paths use `/d/work` and `~/projects`, while the shell keeps PowerShell syntax and pipelines.
 
@@ -145,23 +145,23 @@ upwsh theme use "pure-classic"
 
 | Theme | Preview |
 | --- | --- |
-| [pure-classic](src/theme/pure-classic.json) | ![pure-classic prompt](docs/assets/themes/readme/pure-classic.png) |
-| [pure-glacier](src/theme/pure-glacier.json) | ![pure-glacier prompt](docs/assets/themes/readme/pure-glacier.png) |
-| [pure-ember](src/theme/pure-ember.json) | ![pure-ember prompt](docs/assets/themes/readme/pure-ember.png) |
-| [pure-quiet](src/theme/pure-quiet.json) | ![pure-quiet prompt](docs/assets/themes/readme/pure-quiet.png) |
-| [pure-daylight](src/theme/pure-daylight.json) | ![pure-daylight prompt](docs/assets/themes/readme/pure-daylight.png) |
+| [pure-classic](src/theme/pure-classic.json) | ![pure-classic prompt](docs/assets/themes/pure-classic.png) |
+| [pure-glacier](src/theme/pure-glacier.json) | ![pure-glacier prompt](docs/assets/themes/pure-glacier.png) |
+| [pure-ember](src/theme/pure-ember.json) | ![pure-ember prompt](docs/assets/themes/pure-ember.png) |
+| [pure-quiet](src/theme/pure-quiet.json) | ![pure-quiet prompt](docs/assets/themes/pure-quiet.png) |
+| [pure-daylight](src/theme/pure-daylight.json) | ![pure-daylight prompt](docs/assets/themes/pure-daylight.png) |
 
 ### colorful-* · connected color blocks
 
 | Theme | Preview |
 | --- | --- |
-| [colorful-blue](src/theme/colorful-blue.json) | ![colorful-blue prompt](docs/assets/themes/readme/colorful-blue.png) |
-| [colorful-green](src/theme/colorful-green.json) | ![colorful-green prompt](docs/assets/themes/readme/colorful-green.png) |
-| [colorful-macaron](src/theme/colorful-macaron.json) | ![colorful-macaron prompt](docs/assets/themes/readme/colorful-macaron.png) |
-| [colorful-morandi](src/theme/colorful-morandi.json) | ![colorful-morandi prompt](docs/assets/themes/readme/colorful-morandi.png) |
-| [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) | ![colorful-cyberpunk prompt](docs/assets/themes/readme/colorful-cyberpunk.png) |
-| [colorful-retro](src/theme/colorful-retro.json) | ![colorful-retro prompt](docs/assets/themes/readme/colorful-retro.png) |
-| [colorful-memphis](src/theme/colorful-memphis.json) | ![colorful-memphis prompt](docs/assets/themes/readme/colorful-memphis.png) |
+| [colorful-blue](src/theme/colorful-blue.json) | ![colorful-blue prompt](docs/assets/themes/colorful-blue.png) |
+| [colorful-green](src/theme/colorful-green.json) | ![colorful-green prompt](docs/assets/themes/colorful-green.png) |
+| [colorful-macaron](src/theme/colorful-macaron.json) | ![colorful-macaron prompt](docs/assets/themes/colorful-macaron.png) |
+| [colorful-morandi](src/theme/colorful-morandi.json) | ![colorful-morandi prompt](docs/assets/themes/colorful-morandi.png) |
+| [colorful-cyberpunk](src/theme/colorful-cyberpunk.json) | ![colorful-cyberpunk prompt](docs/assets/themes/colorful-cyberpunk.png) |
+| [colorful-retro](src/theme/colorful-retro.json) | ![colorful-retro prompt](docs/assets/themes/colorful-retro.png) |
+| [colorful-memphis](src/theme/colorful-memphis.json) | ![colorful-memphis prompt](docs/assets/themes/colorful-memphis.png) |
 
 Colorful uses connected user, host, folder and Git blocks. Duration, exit code and `❯` stay on the terminal background. Missing Git, short commands and successful commands hide those segments without leftover arrows. Foreground contrast notes are in each JSON's `_Comment.ContrastAdjustments`.
 
