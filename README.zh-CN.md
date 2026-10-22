@@ -171,7 +171,9 @@ Colorful 在提示符前留一空行（`AddNewline: true`），pure 默认关闭
 
 想像预览页一样切换八种命令状态，下载仓库后用浏览器打开 **[docs/assets/themes/gallery.html](docs/assets/themes/gallery.html)**，无需联网或启动服务。GitHub 可能显示 HTML 源码，不直接运行页面。
 
-**主题完全可自定义。** 把 `~/.config/upwsh/theme/` 里任意一份内置 JSON 复制一份、改个名字再编辑——`Order`、`Modules` 控制每个分段的颜色、排列和连接符，每份 JSON 都有中文字段说明。用 `upwsh theme use "My Theme"` 启用副本，下一次提示符即生效；编辑已选中的主题后需重新选择。
+### 自定义主题
+
+把 `~/.config/upwsh/theme/` 里任意一份内置 JSON 复制一份、改个名字再编辑——`Order`、`Modules` 控制每个分段的颜色、排列和连接符，每份 JSON 都有中文字段说明。用 `upwsh theme use "My Theme"` 启用副本，下一次提示符即生效；编辑已选中的主题后需重新选择。
 
 更新会刷新 `theme/` 下的随包文件名，你自定义的 JSON 和 `theme.json` 留下。旧名称没有别名，也不会自动重命名。文件布局、最小示例主题和完整字段说明见[主题说明](docs/themes.zh-CN.md)。
 

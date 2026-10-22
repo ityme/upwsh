@@ -171,7 +171,9 @@ Each picture above is that theme's prompt only. Quiet hides duration. Dark pictu
 
 For an interactive comparison of all eight command states, download the repository and open **[docs/assets/themes/gallery.html](docs/assets/themes/gallery.html)** in a browser. It works offline; GitHub may show the HTML source rather than run it.
 
-**Themes are fully customizable.** Copy any bundled JSON in `~/.config/upwsh/theme/` under a new name and edit it — `Order` and `Modules` control every segment's colors, layout, and connectors, with field explanations in each JSON. Activate the copy with `upwsh theme use "My Theme"`; the next prompt picks it up. Edits to an active theme require reselecting it.
+### Custom themes
+
+Copy any bundled JSON in `~/.config/upwsh/theme/` under a new name and edit it — `Order` and `Modules` control every segment's colors, layout, and connectors, with field explanations in each JSON. Activate the copy with `upwsh theme use "My Theme"`; the next prompt picks it up. Edits to an active theme require reselecting it.
 
 Updates refresh bundled filenames in `theme/` and leave your custom JSON plus `theme.json` in place. Old names are not aliases or automatically renamed. See [Themes](docs/themes.md) for the file layout, a minimal example theme, and the full field reference.
 
