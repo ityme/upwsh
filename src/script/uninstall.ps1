@@ -348,10 +348,6 @@ if ($PSScriptRoot) {
         . $relaunch
     }
 }
-if (Get-Command Wait-UpwshRelaunchParent -ErrorAction SilentlyContinue) {
-    Wait-UpwshRelaunchParent
-}
-
 if (
     -not $parsed.Check -and
     (Get-Command Start-UpwshRelaunchIfNeeded -ErrorAction SilentlyContinue)

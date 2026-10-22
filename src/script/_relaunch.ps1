@@ -80,17 +80,11 @@ function Start-UpwshRelaunchIfNeeded {
         throw "missing relaunch script: $target"
     }
 
-    $waitForResult = $EntryName -in @('install.ps1', 'update.ps1')
     $exe = (Get-Process -Id $PID).Path
     $start = [Diagnostics.ProcessStartInfo]::new()
     $start.FileName = $exe
     $start.UseShellExecute = $false
     $start.Environment['UPWSH_UNINSTALL_REEXEC'] = '1'
-    if ($waitForResult) {
-        [void]$start.Environment.Remove('UPWSH_UNINSTALL_WAIT_PID')
-    } else {
-        $start.Environment['UPWSH_UNINSTALL_WAIT_PID'] = "$PID"
-    }
     $workingDirectory = (Get-Location).ProviderPath
     $start.WorkingDirectory = if (Test-UpwshPathUnder -Path $workingDirectory -Root $InstallHome) {
         $tempDir
@@ -104,26 +98,18 @@ function Start-UpwshRelaunchIfNeeded {
     }
     $process = [Diagnostics.Process]::Start($start)
     try {
-        if ($waitForResult) {
-            $process.WaitForExit()
-            $global:LASTEXITCODE = $process.ExitCode
-        }
+        # Wait for the relaunched entry so its output lands before the caller's prompt.
+        # Safe even when the child deletes this tree: a running script's file is not held open.
+        $process.WaitForExit()
+        $global:LASTEXITCODE = $process.ExitCode
     } finally {
         $process.Dispose()
-        if ($waitForResult) { Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
+        Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue
     }
     Write-Host ("relaunch {0}" -f $target)
     return $true
 }
 
-function Wait-UpwshRelaunchParent {
-    $raw = $env:UPWSH_UNINSTALL_WAIT_PID
-    Remove-Item Env:\UPWSH_UNINSTALL_WAIT_PID -ErrorAction SilentlyContinue
-    $processId = 0
-    if ([int]::TryParse($raw, [ref]$processId) -and $processId -gt 0 -and $processId -ne $PID) {
-        Wait-Process -Id $processId -Timeout 30 -ErrorAction SilentlyContinue
-    }
-}
 
 function Remove-UpwshTree {
     param([string]$Path, [int]$Tries = 8)

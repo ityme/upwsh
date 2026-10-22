@@ -519,7 +519,6 @@ try {
     }
     if ([IO.File]::Exists($helper)) {
         . $helper
-        Wait-UpwshRelaunchParent
         $entry = if ($script:UpdateOnly) { 'update.ps1' } else { 'install.ps1' }
         if (Start-UpwshRelaunchIfNeeded -InstallHome $directory -EntryName $entry -Arguments $script:Arguments) {
             Complete-Install $global:LASTEXITCODE $scriptInvocation
