@@ -6,7 +6,7 @@ $runtimeRoot = Join-Path $sourceRoot 'src'
 $installer = Join-Path $runtimeRoot 'script\install.ps1'
 $uninstaller = Join-Path $runtimeRoot 'script\uninstall.ps1'
 $updater = Join-Path $runtimeRoot 'script\update.ps1'
-$root = Join-Path ([IO.Path]::GetTempPath()) ('unixify-install-' + [Guid]::NewGuid().ToString('N'))
+$root = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-install-' + [Guid]::NewGuid().ToString('N'))
 $script:Passed = 0
 $script:Failures = [Collections.Generic.List[string]]::new()
 
