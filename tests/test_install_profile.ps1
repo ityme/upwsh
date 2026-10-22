@@ -108,8 +108,8 @@ try {
         $output = Invoke-Installer -ProfilePath $hook
         $text = [IO.File]::ReadAllText($hook)
         Assert-Contains $output 'state     installed'
-        Assert-Contains $text '# >>> unixify-powershell >>>'
-        Assert-Contains $text '# <<< unixify-powershell <<<'
+        Assert-Contains $text '# >>> upwsh >>>'
+        Assert-Contains $text '# <<< upwsh <<<'
         Assert-Contains $text $installedProfile
         Assert-Contains $text 'Test-Path -LiteralPath'
     }
@@ -118,7 +118,7 @@ try {
         Invoke-Installer -ProfilePath $hook | Out-Null
         Invoke-Installer -ProfilePath $hook | Out-Null
         $text = [IO.File]::ReadAllText($hook)
-        $begins = [regex]::Matches($text, '# >>> unixify-powershell >>>').Count
+        $begins = [regex]::Matches($text, '# >>> upwsh >>>').Count
         Assert-Equal $begins 1
     }
 
@@ -128,19 +128,19 @@ try {
         Invoke-Installer -ProfilePath $customHook | Out-Null
         $text = [IO.File]::ReadAllText($customHook)
         Assert-Contains $text 'keep-me'
-        Assert-Contains $text '# >>> unixify-powershell >>>'
+        Assert-Contains $text '# >>> upwsh >>>'
     }
 
     Invoke-InstallProfileTest 'install replaces an old marked block' {
         [IO.File]::WriteAllText(
             $hook,
-            "# >>> unixify-powershell >>>`r`n. 'C:\old\profile.ps1'`r`n# <<< unixify-powershell <<<`r`n"
+            "# >>> upwsh >>>`r`n. 'C:\old\profile.ps1'`r`n# <<< upwsh <<<`r`n"
         )
         Invoke-Installer -ProfilePath $hook | Out-Null
         $text = [IO.File]::ReadAllText($hook)
         Assert-True ($text -notlike '*C:\old\profile.ps1*') "old target remained:`n$text"
         Assert-Contains $text $installedProfile
-        Assert-Equal ([regex]::Matches($text, '# >>> unixify-powershell >>>').Count) 1
+        Assert-Equal ([regex]::Matches($text, '# >>> upwsh >>>').Count) 1
     }
 
     Invoke-InstallProfileTest 'check reports installed target' {

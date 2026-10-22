@@ -200,7 +200,7 @@ exit $LASTEXITCODE
         Assert-Equal $load.Code 0
         $result = Invoke-UpwshTestProcess -UserHome $userHome -File $installedCommand -Arguments @('unload') -WorkingDirectory $project -Environment @{ UPWSH_HOME = $projectSrc }
         Assert-Equal $result.Code 0
-        Assert-True (-not ([IO.File]::ReadAllText($hook)).Contains('# >>> unixify-powershell >>>')) 'hook remained'
+        Assert-True (-not ([IO.File]::ReadAllText($hook)).Contains('# >>> upwsh >>>')) 'hook remained'
         Assert-True (Test-Path -LiteralPath (Join-Path $installHome 'bin\upwsh.cmd')) 'unload removed shim'
         Assert-True (-not $result.Text.Contains('path      removed')) 'unload removed Path'
     }
@@ -324,7 +324,7 @@ exit 0
         Assert-Contains $result.Text 'path      removed'
         Assert-True (-not (Test-Path -LiteralPath $installHome)) 'install tree remained'
         Assert-True (Test-Path -LiteralPath (Join-Path $projectSrc 'profile.ps1')) 'source was deleted'
-        Assert-True (-not ([IO.File]::ReadAllText($hook)).Contains('# >>> unixify-powershell >>>')) 'hook remained'
+        Assert-True (-not ([IO.File]::ReadAllText($hook)).Contains('# >>> upwsh >>>')) 'hook remained'
     }
 
     Invoke-InstallTest 'uninstall cleans environment even when runtime files are missing' {

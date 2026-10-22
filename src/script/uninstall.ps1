@@ -5,8 +5,8 @@
 $script:SavedErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 $script:Arguments = @($args)
-$script:BeginMarker = '# >>> unixify-powershell >>>'
-$script:EndMarker = '# <<< unixify-powershell <<<'
+$script:BeginMarker = '# >>> upwsh >>>'
+$script:EndMarker = '# <<< upwsh <<<'
 
 function Get-UninstallUsage {
     @'

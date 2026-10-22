@@ -18,8 +18,8 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\lib\upwsh_home.ps1')
 $script:NewLine = "`r`n"
-$script:BeginMarker = '# >>> unixify-powershell >>>'
-$script:EndMarker = '# <<< unixify-powershell <<<'
+$script:BeginMarker = '# >>> upwsh >>>'
+$script:EndMarker = '# <<< upwsh <<<'
 
 function Get-SourceRoot {
     [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))

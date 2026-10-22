@@ -194,7 +194,7 @@ try {
         Assert-Contains $result.Text 'command   upwsh'
         Assert-Contains $result.Text 'state     installed'
         $text = [IO.File]::ReadAllText($hook)
-        Assert-Contains $text '# >>> unixify-powershell >>>'
+        Assert-Contains $text '# >>> upwsh >>>'
         Assert-Contains $text $installedProfile
     }
 
@@ -286,7 +286,7 @@ try {
         Assert-True (-not $result.Text.Contains('cmd       ')) 'load rewrote shim'
         Assert-True (Test-Path -LiteralPath $shim -PathType Leaf) 'load removed installed shim'
         $text = [IO.File]::ReadAllText($hook)
-        Assert-Contains $text '# >>> unixify-powershell >>>'
+        Assert-Contains $text '# >>> upwsh >>>'
         Assert-Contains $text $installedProfile
         Assert-True (-not $text.Contains($sourceProfile)) 'load hooked source tree'
     }
