@@ -1,4 +1,4 @@
-# unixify-powershell
+# upwsh
 
 **A native Unix-style shell layer for PowerShell 7 on Windows.**
 
@@ -28,7 +28,7 @@ The prompt shows the current folder, Git branch, command duration, and exit stat
 Run in PowerShell 7 (`pwsh`):
 
 ```powershell
-irm https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/install.ps1 | iex
+irm https://github.com/ityme/upwsh/raw/main/src/script/install.ps1 | iex
 ```
 
 This installs into `~/.config/upwsh`, adds `upwsh` to Path, defines `upwsh` in the current pwsh, and loads the profile. If `eza`, `dust`, or `btm` are missing, install prints:
@@ -188,8 +188,8 @@ Commented examples for `w`, `t`, `i`, `d`, and `gs` are in `user-settings.ps1`. 
 ## Install from source
 
 ```powershell
-git clone https://github.com/ityme/unixify-powershell.git
-cd unixify-powershell
+git clone https://github.com/ityme/upwsh.git
+cd upwsh
 upwsh install --local
 ```
 
@@ -199,7 +199,7 @@ upwsh install --local
 `upwsh install` and `upwsh update` default to the remote release. Use `--local` for the current project, or override the source with `--source`, `--ref`, or `--repo`. Piped installs also default to `--remote` and honor `UPWSH_SOURCE`, `UPWSH_REF`, and `UPWSH_REPO`.
 
 ```powershell
-upwsh install --source I:/ispace/unixify-powershell
+upwsh install --source I:/ispace/upwsh
 upwsh install --remote --ref dev
 upwsh update --remote
 ```

@@ -1,4 +1,4 @@
-# unixify-powershell
+# upwsh
 
 **为 Windows 上的 PowerShell 7 提供原生 Unix 风格的 shell 体验。**
 
@@ -28,7 +28,7 @@
 在 PowerShell 7（`pwsh`）中执行：
 
 ```powershell
-irm https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/install.ps1 | iex
+irm https://github.com/ityme/upwsh/raw/main/src/script/install.ps1 | iex
 ```
 
 安装位置为 `~/.config/upwsh`，会把 `upwsh` 加入 Path，在当前 pwsh 中定义 `upwsh` 命令，并加载 profile。若缺少 `eza`、`dust` 或 `btm`，安装结束会提示：
@@ -188,8 +188,8 @@ function global:work { cd (winpath '/d/my work') }
 ## 从源码安装
 
 ```powershell
-git clone https://github.com/ityme/unixify-powershell.git
-cd unixify-powershell
+git clone https://github.com/ityme/upwsh.git
+cd upwsh
 upwsh install --local
 ```
 
@@ -199,7 +199,7 @@ upwsh install --local
 `upwsh install` / `upwsh update` 默认使用远程版本。开发当前项目时使用 `--local`，也可以用 `--source`、`--ref`、`--repo` 指定来源。管道安装同样默认 `--remote`，并读取 `UPWSH_SOURCE`、`UPWSH_REF`、`UPWSH_REPO`。
 
 ```powershell
-upwsh install --source I:/ispace/unixify-powershell
+upwsh install --source I:/ispace/upwsh
 upwsh install --remote --ref dev
 upwsh update --remote
 ```

@@ -1,5 +1,5 @@
-# 卸掉 unixify-powershell：unload，再删 UPWSH_HOME、Path 和安装目录。
-#   irm https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/uninstall.ps1 | iex
+# 卸掉 upwsh：unload，再删 UPWSH_HOME、Path 和安装目录。
+#   irm https://github.com/ityme/upwsh/raw/main/src/script/uninstall.ps1 | iex
 #   pwsh -NoLogo -NoProfile -File src/script/uninstall.ps1
 
 $script:SavedErrorActionPreference = $ErrorActionPreference
@@ -24,7 +24,7 @@ inspect without writing
 
 A network uninstall can run:
 
-  irm https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/uninstall.ps1 | iex
+  irm https://github.com/ityme/upwsh/raw/main/src/script/uninstall.ps1 | iex
 
 Unload first, then drop UPWSH_HOME and managed Path entries, then delete ~/.config/upwsh.
 A changed user-settings.ps1 is kept; an unchanged template is deleted with the runtime. Themes are not kept.
@@ -321,7 +321,7 @@ $parsed = ConvertFrom-UninstallArguments -Tokens $script:Arguments
 $scriptInvocation = $MyInvocation
 if ($parsed.Help) {
     if ($parsed.Error) {
-        Write-Output "unixify-powershell: $($parsed.Error)"
+        Write-Output "upwsh: $($parsed.Error)"
         Write-Output ''
     }
     Get-UninstallUsage
@@ -334,7 +334,7 @@ if ($parsed.Help) {
 }
 
 if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Output 'unixify-powershell: need PowerShell 7'
+    Write-Output 'upwsh: need PowerShell 7'
     Complete-Uninstall 1 $scriptInvocation
     return
 }

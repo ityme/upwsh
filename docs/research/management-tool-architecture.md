@@ -164,7 +164,7 @@ upwsh tool list|install|update|uninstall
 
 ```text
 source   local
-path     I:\ispace\unixify-powershell\src
+path     I:\ispace\upwsh\src
 ref      working-tree
 target   C:\Users\user\.config\upwsh
 ```
@@ -198,7 +198,7 @@ parse
 建议输出阶段，让用户知道当前发生了什么：
 
 ```text
-[1/7] resolve source   local: I:\ispace\unixify-powershell\src
+[1/7] resolve source   local: I:\ispace\upwsh\src
 [2/7] validate         runtime schema ok
 [3/7] stage            42 files
 [4/7] commit           runtime deployed

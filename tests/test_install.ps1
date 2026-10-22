@@ -133,7 +133,7 @@ try {
     $project = Join-Path $root "local project [test]'s"
     $projectSrc = Join-Path $project 'src'
     New-Item -ItemType Directory -Path $projectSrc -Force | Out-Null
-    [IO.File]::WriteAllText((Join-Path $project 'README.md'), '# unixify-powershell')
+    [IO.File]::WriteAllText((Join-Path $project 'README.md'), '# upwsh')
     Get-ChildItem -LiteralPath $runtimeRoot -Force |
         Where-Object Name -NE 'tests' |
         ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $projectSrc -Recurse -Force }

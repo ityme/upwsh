@@ -25,7 +25,7 @@ usage: upwsh [-h | --help] <command> [<args>]
 
 These are common upwsh commands used in various situations:
 
-install and manage unixify-powershell
+install and manage upwsh
    install          Install or repair the runtime, then load this pwsh
                     [--local | --remote | --source <dir>]
                     [--ref <ref>] [--repo <owner/name>]

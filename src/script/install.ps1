@@ -1,13 +1,13 @@
 # 安装或修复 ~/.config/upwsh，然后 load。
-#   irm https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/install.ps1 | iex
+#   irm https://github.com/ityme/upwsh/raw/main/src/script/install.ps1 | iex
 #   pwsh -NoLogo -NoProfile -File src/script/install.ps1
 
 $script:SavedErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 $script:Arguments = @($args)
-$script:DefaultRepo = 'ityme/unixify-powershell'
+$script:DefaultRepo = 'ityme/upwsh'
 $script:DefaultRef = 'main'
-$script:UserAgent = 'unixify-powershell-installer'
+$script:UserAgent = 'upwsh-installer'
 $script:UpdateOnly = $UpwshSetupMode -eq 'update'
 
 function Get-InstallUsage {
@@ -23,14 +23,14 @@ install this runtime
    --remote         Download the runtime; default for irm | iex
    --source         Local source tree, skip download
    --ref            Git branch or tag to download
-   --repo           GitHub repository, default ityme/unixify-powershell
+   --repo           GitHub repository, default ityme/upwsh
 
 inspect without writing
    --check          Show installation status without copying files
 
 A network install can run:
 
-  irm https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/install.ps1 | iex
+  irm https://github.com/ityme/upwsh/raw/main/src/script/install.ps1 | iex
 
 Environment: UPWSH_REF UPWSH_REPO UPWSH_SOURCE
 Install or repair ~/.config/upwsh. UPWSH_HOME records this fixed location.
@@ -381,7 +381,7 @@ function Get-DownloadedRuntime {
     )
 
     $work = Join-Path ([IO.Path]::GetTempPath()) (
-        'unixify-powershell-' + [Guid]::NewGuid().ToString('N')
+        'upwsh-' + [Guid]::NewGuid().ToString('N')
     )
     New-Item -ItemType Directory -Path $work -Force | Out-Null
     try {
@@ -467,7 +467,7 @@ $parsed = ConvertFrom-InstallArguments -Tokens $script:Arguments
 $scriptInvocation = $MyInvocation
 if ($parsed.Help) {
     if ($parsed.Error) {
-        Write-Output "unixify-powershell: $($parsed.Error)"
+        Write-Output "upwsh: $($parsed.Error)"
         Write-Output ''
     }
     Get-InstallUsage
@@ -480,7 +480,7 @@ if ($parsed.Help) {
 }
 
 if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Output 'unixify-powershell: need PowerShell 7'
+    Write-Output 'upwsh: need PowerShell 7'
     Complete-Install 1 $scriptInvocation
     return
 }
@@ -574,7 +574,7 @@ try {
     }
     Complete-Install 0 $scriptInvocation
 } catch {
-    Write-Output "unixify-powershell: $($_.Exception.Message)"
+    Write-Output "upwsh: $($_.Exception.Message)"
     Complete-Install 1 $scriptInvocation
 } finally {
     if ($workRoot -and (Test-Path -LiteralPath $workRoot)) {

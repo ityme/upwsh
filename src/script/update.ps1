@@ -1,5 +1,5 @@
 # Update an existing installation through the same transaction as install.
-#   irm https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/update.ps1 | iex
+#   irm https://github.com/ityme/upwsh/raw/main/src/script/update.ps1 | iex
 $ErrorActionPreference = 'Stop'
 $updateArguments = @($args)
 $updateInvocation = $MyInvocation
@@ -25,7 +25,7 @@ try {
     $install = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'install.ps1' } else { $null }
     if (-not $install -or -not [IO.File]::Exists($install)) {
         $tempInstall = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-install-' + [guid]::NewGuid().ToString('N') + '.ps1')
-        $raw = Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ityme/unixify-powershell/main/src/script/install.ps1' -UseBasicParsing
+        $raw = Invoke-WebRequest -Uri 'https://github.com/ityme/upwsh/raw/main/src/script/install.ps1' -UseBasicParsing
         [IO.File]::WriteAllText($tempInstall, $raw.Content)
         $install = $tempInstall
     }
@@ -41,7 +41,7 @@ try {
     }
     $updateCode = $global:LASTEXITCODE
 } catch {
-    Write-Output "unixify-powershell: $($_.Exception.Message)"
+    Write-Output "upwsh: $($_.Exception.Message)"
     $updateCode = 1
 } finally {
     if ($tempInstall -and [IO.File]::Exists($tempInstall)) {
