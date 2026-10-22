@@ -23,10 +23,13 @@ $script:Tools = @(
     @{ Name = 'bat'; Repo = 'sharkdp/bat'; Exe = 'bat.exe' }
     @{ Name = 'btm'; Repo = 'ClementTsang/bottom'; Exe = 'btm.exe' }
     @{ Name = 'delta'; Repo = 'dandavison/delta'; Exe = 'delta.exe' }
+    @{ Name = 'difft'; Repo = 'Wilfred/difftastic'; Exe = 'difft.exe' }
     @{ Name = 'dust'; Repo = 'bootandy/dust'; Exe = 'dust.exe' }
+    @{ Name = 'duf'; Repo = 'muesli/duf'; Exe = 'duf.exe' }
     @{ Name = 'eza'; Repo = 'eza-community/eza'; Exe = 'eza.exe' }
     @{ Name = 'fd'; Repo = 'sharkdp/fd'; Exe = 'fd.exe' }
     @{ Name = 'fzf'; Repo = 'junegunn/fzf'; Exe = 'fzf.exe' }
+    @{ Name = 'gh'; Repo = 'cli/cli'; Exe = 'gh.exe' }
     @{ Name = 'hyperfine'; Repo = 'sharkdp/hyperfine'; Exe = 'hyperfine.exe' }
     @{ Name = 'jq'; Repo = 'jqlang/jq'; Exe = 'jq.exe' }
     @{ Name = 'lazygit'; Repo = 'jesseduffield/lazygit'; Exe = 'lazygit.exe' }
