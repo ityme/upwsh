@@ -157,7 +157,7 @@ try {
         $text = [IO.File]::ReadAllText($customHook)
         Assert-Contains $output 'state     removed'
         Assert-Contains $text 'keep-me'
-        Assert-True ($text -notlike '*unixify-powershell*') "marker remained:`n$text"
+        Assert-True ($text -notlike '*# >>> upwsh >>>*') "marker remained:`n$text"
     }
 
     Invoke-InstallProfileTest 'uninstall on missing hook is a no-op' {

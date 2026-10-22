@@ -389,7 +389,7 @@ try {
         Assert-True ($result.Text -notlike '*path      removed*') 'unload removed Path'
         Assert-True (Test-Path -LiteralPath $shim -PathType Leaf) 'unload deleted upwsh.cmd'
         $text = [IO.File]::ReadAllText($hook)
-        Assert-True ($text -notlike '*unixify-powershell*') "unload left the marker:`n$text"
+        Assert-True ($text -notlike '*# >>> upwsh >>>*') "unload left the marker:`n$text"
     }
 
     Invoke-UpwshTest 'tool options are rejected on load' {
