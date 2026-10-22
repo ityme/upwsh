@@ -2,9 +2,7 @@
 
 **u**nix-style **pwsh**: Unix-style PowerShell 7 on Windows with Unix paths, familiar commands, tab-completion, and a native prompt.
 
-![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?logo=powershell&logoColor=white)
-![Windows](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white)
-![License](https://img.shields.io/badge/license-GPL--3.0-blue)
+![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?logo=powershell&logoColor=white) ![Windows](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white) ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
 [简体中文](README.zh-CN.md) · [Install](#install) · [Try it](#try-it) · [Themes](#themes) · [Development](docs/development.md)
 
