@@ -4,7 +4,7 @@
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?logo=powershell&logoColor=white) ![Windows](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white) ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
-[English](README.md) · [安装](#安装) · [快速体验](#快速体验) · [主题](#主题) · [开发说明](docs/development.md)
+[English](README.md) · [安装](#安装) · [快速体验](#快速体验) · [CLI 工具](#cli-工具) · [主题](#主题) · [个人配置](#个人配置) · [开发说明](docs/development.md)
 
 | `pure-classic` | `colorful-blue` |
 | --- | --- |

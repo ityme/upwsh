@@ -4,7 +4,7 @@
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?logo=powershell&logoColor=white) ![Windows](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white) ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
-[简体中文](README.zh-CN.md) · [Install](#install) · [Try it](#try-it) · [Themes](#themes) · [Development](docs/development.md)
+[简体中文](README.zh-CN.md) · [Install](#install) · [Try it](#try-it) · [Tools](#cli-tools) · [Themes](#themes) · [Settings](#personal-settings) · [Development](docs/development.md)
 
 | `pure-classic` | `colorful-blue` |
 | --- | --- |
