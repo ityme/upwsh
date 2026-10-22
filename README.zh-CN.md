@@ -1,14 +1,16 @@
 # upwsh
 
-**为 Windows 上的 PowerShell 7 提供原生 Unix 风格的 shell 体验。**
+**u**nix-style **pwsh**：在 Windows 上提供 Unix 风格的 PowerShell 7 体验——Unix 路径、熟悉的命令、Tab 补全和原生提示符。
+
+![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?logo=powershell&logoColor=white)
+![Windows](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white)
+![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
 [English](README.md) · [安装](#安装) · [快速体验](#快速体验) · [主题](#主题) · [开发说明](docs/development.md)
 
-![pure-classic 提示符](docs/assets/themes/readme/pure-classic.png)
-
-![colorful-blue 提示符](docs/assets/themes/readme/colorful-blue.png)
-
-让 PowerShell 拥有 Unix 风格路径、熟悉的文件命令、快速补全，以及保持原生质感的提示符。
+| `pure-classic` | `colorful-blue` |
+| --- | --- |
+| ![pure-classic 提示符](docs/assets/themes/readme/pure-classic.png) | ![colorful-blue 提示符](docs/assets/themes/readme/colorful-blue.png) |
 
 提示符显示当前文件夹、Git 分支、命令耗时和退出状态，不运行 Starship。路径使用 `/d/work`、`~/projects`，语法和管道仍使用 PowerShell。
 

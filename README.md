@@ -1,14 +1,16 @@
 # upwsh
 
-**A native Unix-style shell layer for PowerShell 7 on Windows.**
+**u**nix-style **pwsh**: Unix-style PowerShell 7 on Windows with Unix paths, familiar commands, tab-completion, and a native prompt.
+
+![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?logo=powershell&logoColor=white)
+![Windows](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white)
+![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
 [简体中文](README.zh-CN.md) · [Install](#install) · [Try it](#try-it) · [Themes](#themes) · [Development](docs/development.md)
 
-![pure-classic prompt](docs/assets/themes/readme/pure-classic.png)
-
-![colorful-blue prompt](docs/assets/themes/readme/colorful-blue.png)
-
-A focused shell experience for people who want Unix-style paths, familiar commands, fast completion, and a prompt that stays native to PowerShell.
+| `pure-classic` | `colorful-blue` |
+| --- | --- |
+| ![pure-classic prompt](docs/assets/themes/readme/pure-classic.png) | ![colorful-blue prompt](docs/assets/themes/readme/colorful-blue.png) |
 
 The prompt shows the current folder, Git branch, command duration, and exit status without running Starship. Paths use `/d/work` and `~/projects`, while the shell keeps PowerShell syntax and pipelines.
 
