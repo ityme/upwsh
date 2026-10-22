@@ -147,6 +147,10 @@ try {
         Assert-Contains $result.Text 'install and manage upwsh'
         Assert-Contains $result.Text '[--local | --remote | --source <dir>]'
         Assert-Contains $result.Text '[--ref <ref>] [--repo <owner/name>]'
+        Assert-Contains $result.Text 'examples:'
+        Assert-Contains $result.Text 'upwsh install --local'
+        Assert-Contains $result.Text 'upwsh install --remote --ref dev'
+        Assert-Contains $result.Text 'upwsh theme use colorful-blue'
     }
 
     Invoke-UpwshTest 'unknown option prints usage and exits 2' {

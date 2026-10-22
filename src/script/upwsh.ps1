@@ -51,6 +51,18 @@ select a prompt theme
 edit personal settings
    edit             Open user-settings.ps1, then reload this pwsh
 
+examples:
+   upwsh install                     Install the latest release from GitHub
+   upwsh install --local             Install from the project in the current directory
+   upwsh install --remote --ref dev  Install a development branch
+   upwsh update                      Update to the latest release
+   upwsh uninstall                   Remove upwsh from this machine
+   upwsh tool list                   Show which tools are installed
+   upwsh tool install --all          Install every supported tool
+   upwsh theme list                  List themes; * marks the active one
+   upwsh theme use colorful-blue     Switch the prompt theme
+   upwsh edit                        Edit personal settings
+
 'upwsh --help' prints this overview.
 
 Listed tools: bat btm delta dust eza fd fzf hyperfine jq lazygit procs
