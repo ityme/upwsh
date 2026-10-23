@@ -525,6 +525,48 @@ Set-Alias -Name user_settings_marker -Value Get-Date -Scope Global -Force
         Assert-True (-not (Test-PathLikeToken 'feature-name')) 'plain value was misdetected as a path'
     }
 
+    Invoke-CompletionTest 'upwsh: top-level subcommands' {
+        $state = Complete-HookLine -Line 'upwsh '
+        $values = @($state.Matches | ForEach-Object CompletionText)
+        foreach ($expected in @('install', 'update', 'uninstall', 'tool', 'theme', 'edit')) {
+            Assert-Contains $values $expected
+        }
+    }
+    Invoke-CompletionTest 'upwsh: tool action and tool names' {
+        $state = Complete-HookLine -Line 'upwsh tool in'
+        $values = @($state.Matches | ForEach-Object CompletionText)
+        Assert-Contains $values 'install'
+        Assert-True ('uninstall' -notin $values) 'substring filter matched uninstall for prefix in'
+        $state = Complete-HookLine -Line 'upwsh tool install du'
+        $values = @($state.Matches | ForEach-Object CompletionText)
+        Assert-Contains $values 'duf'
+        Assert-Contains $values 'dust'
+    }
+    Invoke-CompletionTest 'upwsh: theme use completes installed theme names' {
+        $themeDir = Join-Path $fakeHome '.config\upwsh\theme'
+        New-Item -ItemType Directory -Path $themeDir -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $themeDir 'colorful-blue.json'), '{}')
+        [IO.File]::WriteAllText((Join-Path $themeDir 'pure-classic.json'), '{}')
+        try {
+            $state = Complete-HookLine -Line 'upwsh theme use co'
+            $values = @($state.Matches | ForEach-Object CompletionText)
+            Assert-Contains $values 'colorful-blue'
+            $state = Complete-HookLine -Line 'upwsh theme use pure-class'
+            $values = @($state.Matches | ForEach-Object CompletionText)
+            Assert-Contains $values 'pure-classic'
+        } finally {
+            Remove-Item -LiteralPath (Join-Path $fakeHome '.config\upwsh') -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    Invoke-CompletionTest 'upwsh: install and update offer source flags' {
+        $state = Complete-HookLine -Line 'upwsh install --'
+        $values = @($state.Matches | ForEach-Object CompletionText)
+        Assert-Contains $values '--local'
+        Assert-Contains $values '--remote'
+        $state = Complete-HookLine -Line 'upwsh update --l'
+        $values = @($state.Matches | ForEach-Object CompletionText)
+        Assert-Contains $values '--local'
+    }
     Invoke-CompletionTest 'filesystem: multiple candidates' {
         $values = @(Get-FileSystemCompletionTexts 'target-')
         Assert-Contains $values 'target-alpha/'
