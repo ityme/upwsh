@@ -474,7 +474,11 @@ function Get-CompletionDecision {
             while ($prefix.Length -gt 0 -and -not $last.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) {
                 $prefix = $prefix.Substring(0, $prefix.Length - 1)
             }
-            return [pscustomobject]@{ MatchCount = $unique.Count; Replacement = $prefix }
+            return [pscustomobject]@{
+                MatchCount  = $unique.Count
+                Replacement = $prefix
+                ResultType  = 'ProviderItem'
+            }
         }
     }
 
@@ -564,6 +568,7 @@ function Get-CompletionDecision {
     [pscustomobject]@{
         MatchCount  = $matchCount
         Replacement = $replacement
+        ResultType  = if ($matchCount -eq 1) { [string]$firstMatch.ResultType } else { $null }
     }
 }
 

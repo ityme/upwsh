@@ -109,11 +109,14 @@ function Complete-HookLine {
         $state.ReplacementLength = $git.ReplacementLength
         $state.Matches = $git.Matches
         $state.MatchesNormalized = $true
-        $state.SpaceAfterWord = $true
+        $state.SpaceAfterWord = -not $git.PathOnlyCompletion
         if ($git.AllowPathCompletion) {
             $currentText = $Line.Substring($git.ReplacementIndex, $git.ReplacementLength)
             $pathMatches = @(Get-UnixPathCompletion -WordToComplete $currentText)
-            if ($pathMatches.Count -gt 0) {
+            if ($git.PathOnlyCompletion) {
+                $state.Matches = $pathMatches
+                $state.MatchesNormalized = $false
+            } elseif ($pathMatches.Count -gt 0) {
                 # checkout accepts either a ref or a path in this position. Keep both
                 # candidate types so an identically named ref and file remain visible.
                 $state.Matches = @($git.Matches) + $pathMatches
@@ -157,7 +160,11 @@ function Get-HookCompletionEdit {
 
     $length = $State.ReplacementLength
     $text = $Decision.Replacement
-    if ($State.SpaceAfterWord -and $Decision.MatchCount -eq 1) {
+    if (
+        $State.SpaceAfterWord -and
+        $Decision.MatchCount -eq 1 -and
+        -not ([string]$Decision.ResultType).StartsWith('Provider', [StringComparison]::Ordinal)
+    ) {
         $end = $State.ReplacementIndex + $length
         if ($end -eq $State.Line.Length) {
             $text += ' '

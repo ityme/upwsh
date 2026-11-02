@@ -57,7 +57,9 @@ Invoke-FixtureGit -C $fixture update-ref refs/remotes/origin/topic HEAD
 Invoke-FixtureGit -C $fixture symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
 Invoke-FixtureGit -C $fixture update-ref refs/remotes/upstream/only-upstream HEAD
 [void][IO.Directory]::CreateDirectory((Join-Path $fixture 'feature'))
+[void][IO.Directory]::CreateDirectory((Join-Path $fixture 'src\themes'))
 [IO.File]::WriteAllText((Join-Path $fixture 'feature\file-not-branch.txt'), '')
+[IO.File]::WriteAllText((Join-Path $fixture 'src\themes\dark.json'), '')
 [IO.File]::WriteAllText((Join-Path $fixture 'notes.txt'), '')
 Push-Location $fixture
 try {
@@ -117,14 +119,27 @@ try {
         $values = Get-GitCandidates 'git switch '
         if ('v1.0' -in $values -or 'origin/main' -in $values -or 'origin/HEAD' -in $values) { throw 'wrong switch candidates' }
     }
-    Test-GitCase 'checkout merges bare filesystem paths with refs' {
+    Test-GitCase 'checkout paths reuse path behavior while refs retain Git behavior' {
+        $add = Complete-GitTab 'git add sr'
+        $checkout = Complete-GitTab 'git checkout sr'
+        Assert-Equal $checkout.Line.Substring('git checkout '.Length) $add.Line.Substring('git add '.Length)
+        Assert-Equal $add.Line 'git add src/'
+        $add = Complete-GitTab $add.Line
+        $checkout = Complete-GitTab $checkout.Line
+        Assert-Equal $checkout.Line ('git checkout ' + $add.Line.Substring('git add '.Length))
+        Assert-Equal $add.Line 'git add src/themes/'
+        Assert-Equal (Complete-GitTab 'git checkout src/th').Line 'git checkout src/themes/'
+        Assert-Equal (Complete-GitTab 'git checkout fe').Line 'git checkout feature/'
         Assert-Candidate 'git checkout fe' 'feature/one'
-        Assert-Candidate 'git checkout fe' 'feature/two'
-        Assert-Candidate 'git checkout fe' 'feature/'
-        Assert-Candidate 'git checkout feature/fi' 'feature/file-not-branch.txt'
-        Assert-Equal (Complete-GitTab 'git checkout no').Line 'git checkout notes.txt '
-        Assert-Equal (Complete-GitTab 'git checkout -- no').Line 'git checkout -- notes.txt'
-        if ('notes.txt' -in (Get-GitCandidates 'git switch no')) { throw 'switch leaked filesystem candidates' }
+        Assert-Equal (Complete-GitTab 'git checkout main').Line 'git checkout main '
+        Assert-Equal (Complete-GitTab 'git checkout -- src/th').Line 'git checkout -- src/themes/'
+        $pathOnly = Get-GitCandidates 'git checkout -- src/th'
+        Assert-Equal $pathOnly.Count 1
+        Assert-Equal ($pathOnly -join '|') 'src/themes/'
+        $switchCandidates = Get-GitCandidates 'git switch src/th'
+        if ('src/themes/' -in $switchCandidates -or 'src/themes/dark.json' -in $switchCandidates) {
+            throw 'switch leaked filesystem candidates'
+        }
     }
     Test-GitCase 'checkout merge and rebase provide refs' {
         foreach ($verb in @('checkout', 'merge', 'rebase', 'cherry-pick', 'show', 'reset')) {

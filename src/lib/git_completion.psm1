@@ -149,7 +149,7 @@ function Get-GitCompletion {
         } else { return $null }
         $elements.Add($element)
     }
-    if ('--' -in $words -or '--%' -in $words -or $prefix.StartsWith('-')) { return $null }
+    if ('--%' -in $words -or $prefix.StartsWith('-')) { return $null }
     $directoryArgs = @()
     $index = 0
     while ($index -lt $words.Count -and $words[$index] -ceq '-C') {
@@ -162,6 +162,7 @@ function Get-GitCompletion {
     $kind = 'commands'
     $remote = ''
     $allowPathCompletion = $false
+    $pathOnlyCompletion = $false
     if ($index -lt $words.Count) {
         $verb = $words[$index]
         $arguments = @($words | Select-Object -Skip ($index + 1))
@@ -170,6 +171,15 @@ function Get-GitCompletion {
                 if ($prefix -match '^(?:\.{1,2}[/\\]|~[/\\]|/[A-Za-z](?:/|$)|[A-Za-z]:[/\\])') { return $null }
                 # Creating a branch expects a new name; checkout paths use the normal completer.
                 if (@($arguments | Where-Object { $_ -cin @('-c', '-C', '-b', '-B', '--orphan') }).Count) { return $null }
+                if ($verb -eq 'checkout' -and '--' -cin $arguments) {
+                    return [pscustomobject]@{
+                        ReplacementIndex    = $start
+                        ReplacementLength   = $length
+                        Matches             = @()
+                        AllowPathCompletion = $true
+                        PathOnlyCompletion  = $true
+                    }
+                }
                 $allowed = @('--track', '-t', '--detach', '-d', '--force', '-f')
                 if ($verb -eq 'branch') { $allowed = @('-d', '-D', '--delete') }
                 if (@($arguments | Where-Object { $_ -cnotin $allowed }).Count) { return $null }
@@ -233,6 +243,7 @@ function Get-GitCompletion {
         ReplacementLength   = $length
         Matches             = $matches
         AllowPathCompletion = $allowPathCompletion
+        PathOnlyCompletion  = $pathOnlyCompletion
     }
 }
 
