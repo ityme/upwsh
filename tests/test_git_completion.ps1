@@ -117,6 +117,15 @@ try {
         $values = Get-GitCandidates 'git switch '
         if ('v1.0' -in $values -or 'origin/main' -in $values -or 'origin/HEAD' -in $values) { throw 'wrong switch candidates' }
     }
+    Test-GitCase 'checkout merges bare filesystem paths with refs' {
+        Assert-Candidate 'git checkout fe' 'feature/one'
+        Assert-Candidate 'git checkout fe' 'feature/two'
+        Assert-Candidate 'git checkout fe' 'feature/'
+        Assert-Candidate 'git checkout feature/fi' 'feature/file-not-branch.txt'
+        Assert-Equal (Complete-GitTab 'git checkout no').Line 'git checkout notes.txt '
+        Assert-Equal (Complete-GitTab 'git checkout -- no').Line 'git checkout -- notes.txt'
+        if ('notes.txt' -in (Get-GitCandidates 'git switch no')) { throw 'switch leaked filesystem candidates' }
+    }
     Test-GitCase 'checkout merge and rebase provide refs' {
         foreach ($verb in @('checkout', 'merge', 'rebase', 'cherry-pick', 'show', 'reset')) {
             Assert-Candidate "git $verb fe" 'feature/one'
@@ -126,7 +135,7 @@ try {
     }
     Test-GitCase 'branch names containing slashes are not replaced by filesystem candidates' {
         $values = Get-GitCandidates 'git checkout feature/'
-        Assert-Equal ($values -join '|') 'feature/one|feature/two'
+        Assert-Equal ($values -join '|') 'feature/one|feature/two|feature/file-not-branch.txt'
         Assert-Equal (Get-GitCandidates 'git switch feature/file').Count 0
     }
     Test-GitCase 'ref matching preserves case' {
@@ -168,7 +177,7 @@ try {
         $cursor = $line.IndexOf(';')
         $state = Complete-HookLine -Line $line -Cursor $cursor
         Assert-Equal $line.Substring($state.ReplacementIndex, $state.ReplacementLength) 'fe'
-        Assert-Equal ($state.Matches.CompletionText -join '|') 'feature/one|feature/two'
+        Assert-Equal ($state.Matches.CompletionText -join '|') 'feature/one|feature/two|feature/'
     }
     Test-GitCase 'quoted refs and git.exe use the same candidates' {
         Assert-Candidate "git checkout 'feature/o'" 'feature/one'

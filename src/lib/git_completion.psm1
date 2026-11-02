@@ -161,6 +161,7 @@ function Get-GitCompletion {
     }
     $kind = 'commands'
     $remote = ''
+    $allowPathCompletion = $false
     if ($index -lt $words.Count) {
         $verb = $words[$index]
         $arguments = @($words | Select-Object -Skip ($index + 1))
@@ -172,6 +173,8 @@ function Get-GitCompletion {
                 $allowed = @('--track', '-t', '--detach', '-d', '--force', '-f')
                 if ($verb -eq 'branch') { $allowed = @('-d', '-D', '--delete') }
                 if (@($arguments | Where-Object { $_ -cnotin $allowed }).Count) { return $null }
+                $allowPathCompletion = $verb -eq 'checkout' -and
+                    @($arguments | Where-Object { $_ -cin $allowed }).Count -eq $arguments.Count
                 $kind = if ($verb -eq 'branch') { 'heads' }
                     elseif ($verb -eq 'switch' -and ('--track' -cin $arguments -or '-t' -cin $arguments)) { 'remote-refs' }
                     elseif ($verb -eq 'switch' -and '--detach' -cnotin $arguments -and '-d' -cnotin $arguments) { 'heads' }
@@ -223,8 +226,14 @@ function Get-GitCompletion {
     $matches = @(foreach ($value in $seen) {
         [Management.Automation.CompletionResult]::new((ConvertTo-QuotedText $value), $value, 'ParameterValue', "git $kind")
     })
-    # Even an empty ref result is authoritative: do not replace it with filesystem names.
-    [pscustomobject]@{ ReplacementIndex = $start; ReplacementLength = $length; Matches = $matches }
+    # Even an empty ref result is authoritative for other Git commands. Checkout can
+    # also target a path, so the hook may merge filesystem candidates when requested.
+    [pscustomobject]@{
+        ReplacementIndex    = $start
+        ReplacementLength   = $length
+        Matches             = $matches
+        AllowPathCompletion = $allowPathCompletion
+    }
 }
 
 Export-ModuleMember -Function Get-GitCompletion, Clear-GitCompletionCache

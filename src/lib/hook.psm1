@@ -110,6 +110,16 @@ function Complete-HookLine {
         $state.Matches = $git.Matches
         $state.MatchesNormalized = $true
         $state.SpaceAfterWord = $true
+        if ($git.AllowPathCompletion) {
+            $currentText = $Line.Substring($git.ReplacementIndex, $git.ReplacementLength)
+            $pathMatches = @(Get-UnixPathCompletion -WordToComplete $currentText)
+            if ($pathMatches.Count -gt 0) {
+                # checkout accepts either a ref or a path in this position. Keep both
+                # candidate types so an identically named ref and file remain visible.
+                $state.Matches = @($git.Matches) + $pathMatches
+                $state.MatchesNormalized = $false
+            }
+        }
         return $state
     }
     $commands = $ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] }, $true)
