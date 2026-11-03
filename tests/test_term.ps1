@@ -98,8 +98,13 @@ Test-Term 'file URIs encode reserved and non-ASCII characters without changing f
         $uri = [uri]$text
         Assert-Equal $uri.Fragment ''
         $decoded = [uri]::UnescapeDataString($uri.AbsolutePath).Replace('/', '\')
-        if ($path.StartsWith('\\')) { Assert-Equal ('\\' + $uri.Host + $decoded) $path }
-        else { Assert-Equal $decoded.TrimStart('\') $path; Assert-Equal $uri.Host.ToLowerInvariant() ([Environment]::MachineName.ToLowerInvariant()) }
+        if ($path.StartsWith('\\')) {
+            Assert-Equal ('\\' + $uri.Host + $decoded) $path
+        } else {
+            Assert-Equal $decoded.TrimStart('\') $path
+            Assert-Equal $uri.Host ''
+            if (-not $text.StartsWith('file:///')) { throw 'local drive URI must use an empty authority' }
+        }
         if ($text.Contains(' ')) { throw 'URI has unescaped space' }
     }
 }

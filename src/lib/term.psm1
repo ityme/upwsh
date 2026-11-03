@@ -166,7 +166,7 @@ function ConvertTo-TermFileUri {
         $authority = $parts[0]
         $segments = @($parts | Select-Object -Skip 1)
     } elseif ($slashPath -match '^[A-Za-z]:/') {
-        $authority = [Environment]::MachineName
+        $authority = ''
         $segments = $slashPath.Split('/')
     } else { return '' }
     $encoded = [Collections.Generic.List[string]]::new()
