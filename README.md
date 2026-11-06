@@ -106,7 +106,7 @@ Changes made in another window, such as switching a branch in the same working t
 | `upwsh load` | Enable startup loading of `~/.config/upwsh/profile.ps1` and load this pwsh |
 | `upwsh unload` | Disable startup loading and drop the current-session prompt |
 | `upwsh uninstall` | Unload, then remove the installation; keep a changed `user-settings.ps1`, delete themes |
-| `upwsh edit` | Open `~/.config/upwsh/user-settings.ps1` in nvim, then reload this pwsh |
+| `upwsh edit` | Open `~/.config/upwsh/user-settings.ps1` in nvim, vim, or Windows Notepad, then reload this pwsh |
 
 `upwsh install` and `upwsh update` default to the remote release. Use `--local` when developing from this project. Install and update load the current pwsh; uninstall unloads it, then deletes the runtime. A changed `user-settings.ps1` is kept; themes are not.
 

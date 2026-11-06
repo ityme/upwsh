@@ -374,11 +374,14 @@ function Invoke-UpwshTheme {
 }
 
 function Get-UpwshSettingsEditor {
-    foreach ($name in @('nvim', 'vim')) {
+    foreach ($name in @('nvim', 'vim', 'notepad')) {
         $command = Get-Command $name -CommandType Application -ErrorAction SilentlyContinue |
             Select-Object -First 1
         if ($command) {
-            return $command.Source
+            return [pscustomobject]@{
+                Path = $command.Source
+                Wait = $name -eq 'notepad'
+            }
         }
     }
 }
@@ -390,12 +393,17 @@ function Invoke-UpwshEdit {
     }
     $editor = Get-UpwshSettingsEditor
     if (-not $editor) {
-        throw 'nvim is not on PATH; install Neovim to edit user-settings.ps1'
+        throw 'nvim, vim, or notepad.exe is not available to edit user-settings.ps1'
     }
-    Write-UpwshStatus file $settings editor ([IO.Path]::GetFileNameWithoutExtension($editor))
-    & $editor $settings
-    if ($null -ne $LASTEXITCODE) {
-        $global:LASTEXITCODE = $LASTEXITCODE
+    $name = [IO.Path]::GetFileNameWithoutExtension($editor.Path)
+    Write-UpwshStatus file $settings editor $name
+    if ($editor.Wait) {
+        Start-Process -FilePath $editor.Path -ArgumentList ('"' + $settings + '"') -Wait
+    } else {
+        & $editor.Path $settings
+        if ($null -ne $LASTEXITCODE) {
+            $global:LASTEXITCODE = $LASTEXITCODE
+        }
     }
 }
 

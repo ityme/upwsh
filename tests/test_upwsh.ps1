@@ -245,14 +245,20 @@ try {
         }
     }
 
-    Invoke-UpwshTest 'edit fails when nvim and vim are missing' {
+    Invoke-UpwshTest 'edit falls back to Windows Notepad when nvim and vim are missing' {
+        $stub = Join-Path $root 'edit-notepad'
+        New-Item -ItemType Directory -Path $stub -Force | Out-Null
+        $log = Join-Path $stub 'called.txt'
+        $fakeNotepad = Join-Path $stub 'notepad.cmd'
+        Set-Content -LiteralPath $fakeNotepad -Value "@echo off`r`necho %*>`"$log`"`r`nexit /b 0"
         $savedPath = $env:PATH
         try {
-            $env:PATH = Join-Path $root 'edit-empty'
-            New-Item -ItemType Directory -Path $env:PATH -Force | Out-Null
+            $env:PATH = $stub
             $result = Invoke-Upwsh -Tokens @('edit')
-            Assert-Equal $result.Code 1
-            Assert-Contains $result.Text 'nvim is not on PATH'
+            if ($result.Code -ne 0) { throw "edit exited $($result.Code): $($result.Text)" }
+            Assert-Contains $result.Text 'notepad'
+            $called = [IO.File]::ReadAllText($log)
+            Assert-Contains $called (Join-Path $installHome 'user-settings.ps1')
         } finally {
             $env:PATH = $savedPath
         }

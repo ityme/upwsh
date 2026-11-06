@@ -106,7 +106,7 @@ Git 单词唯一匹配时，补全后自动加空格。每段都只有一个匹�
 | `upwsh load` | 启用启动时自动加载，并加载当前 pwsh |
 | `upwsh unload` | 停止自动加载，并恢复当前会话的默认提示符 |
 | `upwsh uninstall` | 先 unload，再删除安装；改过的 `user-settings.ps1` 留下，主题不留 |
-| `upwsh edit` | 用 nvim 打开 `~/.config/upwsh/user-settings.ps1`，退出后重载当前 pwsh |
+| `upwsh edit` | 依次用 nvim、vim 或 Windows 记事本打开 `~/.config/upwsh/user-settings.ps1`，关闭后重载当前 pwsh |
 
 `upwsh install` / `upwsh update` 默认使用远程版本；开发当前项目时使用 `--local`。安装和更新都会加载当前窗口；卸载会先 unload，再删除运行时。改过的 `user-settings.ps1` 留下，主题不留。
 
