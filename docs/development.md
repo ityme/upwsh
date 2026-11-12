@@ -21,11 +21,14 @@ pwsh -NoLogo -NoProfile -File tests/test_term.ps1
 pwsh -NoLogo -NoProfile -File tests/test_interaction.ps1
 pwsh -NoLogo -NoProfile -File tests/test_install_profile.ps1
 pwsh -NoLogo -NoProfile -File tests/test_upwsh.ps1
+pwsh -NoLogo -NoProfile -File tests/test_edit_reload.ps1
 pwsh -NoLogo -NoProfile -File tests/test_install.ps1
 pwsh -NoLogo -NoProfile -File tests/test_deploy_locks.ps1
 ```
 
 The test harness uses temporary user homes and profiles and disables persistent environment writes. Symbolic-link creation tests report a separate skip only for an explicit missing symlink privilege/Developer Mode error; unexpected creation errors still fail. Junction safety tests always run.
+
+The public `upwsh` function is created from an unbound script block containing a quoted absolute entry path. It must not retain `upwsh.psm1` session state: lifecycle commands force-reload that module while their calling command is still running. `test_edit_reload.ps1` reproduces the first install's module-import/load sequence and repeated edits in the same process, without running the installer or a real editor.
 
 ## Deployment
 

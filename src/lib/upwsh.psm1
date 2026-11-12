@@ -1,11 +1,10 @@
 # upwsh 命令入口。实现在 script/upwsh.ps1。
 
-function global:upwsh {
-    $installer = [IO.Path]::GetFullPath(
-        (Join-Path $PSScriptRoot '..\script\upwsh.ps1')
-    )
-    & $installer @args
-}
+# Run outside this module's session state: profile reload force-imports this
+# module, which must not tear down the scope of the running lifecycle command.
+$entryPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\script\upwsh.ps1'))
+$entryLiteral = "'" + $entryPath.Replace("'", "''") + "'"
+Set-Item -Path Function:global:upwsh -Value ([scriptblock]::Create("& $entryLiteral @args"))
 
 # upwsh 子命令补全。静态候选；只有 theme use 读本地主题目录。
 $script:UpwshCommands = @('install', 'update', 'uninstall', 'tool', 'theme', 'edit', 'load', 'unload')
