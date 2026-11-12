@@ -428,11 +428,10 @@ Set-Alias -Name user_settings_marker -Value Get-Date -Scope Global -Force
         Assert-Equal $converted[3] 'C:relative'
         Assert-Equal $converted[4] '--name'
     }
-    Invoke-CompletionTest 'semantics: unix absolute path is rewritten' {
-        $line = ConvertTo-WindowsCommandLine "ls $unixWork"
-        $windowsWork = $work -replace '\\', '/'
-        Assert-True ($line.Contains($windowsWork)) "unix path was not rewritten: $line"
-        Assert-True ($unixWork -notin $line) "unix path remained in rewritten line: $line"
+    Invoke-CompletionTest 'semantics: command arguments stay unchanged until path adapters run' {
+        Assert-Equal (ConvertTo-WindowsCommandLine "ls $unixWork") "ls $unixWork"
+        Assert-Equal (ConvertTo-WindowsCommandLine 'grep /i/tmp file.txt') 'grep /i/tmp file.txt'
+        Assert-Equal (ConvertTo-WindowsCommandLine 'ls --ignore-glob /i/* -- /i/tmp') 'ls --ignore-glob /i/* -- /i/tmp'
     }
     Invoke-CompletionTest 'semantics: unquoted glob stays on the command line' {
         $line = ConvertTo-WindowsCommandLine 'ls target-*'
@@ -835,9 +834,9 @@ Set-Alias -Name user_settings_marker -Value Get-Date -Scope Global -Force
     }
     Invoke-CompletionTest 'semantics: ls unix drive stays a listing command' {
         $line = ConvertTo-WindowsCommandLine "ls /$driveLetter/"
-        Assert-Equal $line "ls ${driveLetterUpper}:/"
+        Assert-Equal $line "ls /$driveLetter/"
         $line = ConvertTo-WindowsCommandLine "ls /$driveLetter"
-        Assert-Equal $line "ls ${driveLetterUpper}:/"
+        Assert-Equal $line "ls /$driveLetter"
     }
     Invoke-CompletionTest 'eza: passes converted operands to the binary' {
         $definition = (Get-Command Invoke-Eza).Definition
@@ -889,16 +888,16 @@ Set-Alias -Name user_settings_marker -Value Get-Date -Scope Global -Force
         }
     }
     Invoke-CompletionTest 'enter: functions and applications share path rewriting' {
-        Assert-True (
+        Assert-True (-not (
             Test-WindowsCommandLineReplacement `
                 -Original "ls /$driveLetter/" `
-                -Converted "ls ${driveLetterUpper}:/"
-        ) 'function arguments should use the same path rules'
-        Assert-True (
+                -Converted "ls /$driveLetter/"
+        )) 'function arguments should stay unchanged by Enter'
+        Assert-True (-not (
             Test-WindowsCommandLineReplacement `
                 -Original 'vim /i/test/notes.txt' `
-                -Converted 'vim I:/test/notes.txt'
-        ) 'vim should replace the command line for the TUI'
+                -Converted 'vim /i/test/notes.txt'
+        )) 'external arguments should stay unchanged by Enter'
         Assert-True (
             Test-WindowsCommandLineReplacement `
                 -Original "/$driveLetter/" `

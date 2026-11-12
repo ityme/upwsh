@@ -82,6 +82,27 @@ Test-Case 'explicit conversion does not replace fragments or expand wildcards' {
     Assert-Equal (unixpath 'relative\a') 'relative/a'
     Assert-Equal (unixpath '/c/a') '/c/a'
 }
+Test-Case 'cd preserves provider roots relative navigation and previous location' {
+    $original = (Get-Location).Path
+    try {
+        foreach ($providerRoot in @('Env:\', 'Variable:\', 'HKCU:\')) {
+            cd $providerRoot
+            Assert-Equal (Get-Location).Path $providerRoot
+            cd .
+            Assert-Equal (Get-Location).Path $providerRoot
+            cd -
+            Assert-Equal (Get-Location).Path $providerRoot
+        }
+        cd 'HKCU:\Software'
+        cd ..
+        Assert-Equal (Get-Location).Path 'HKCU:\'
+        cd $original
+        cd -
+        Assert-Equal (Get-Location).Path 'HKCU:\'
+        cd $original
+        Assert-Equal (Get-Location).ProviderPath $original
+    } finally { Set-Location -LiteralPath $original }
+}
 Test-Case 'cp file copy, rename, and multiple sources use robocopy semantics' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-cp-files-' + [guid]::NewGuid().ToString('N'))
     try {
@@ -102,9 +123,13 @@ Test-Case 'cp file copy, rename, and multiple sources use robocopy semantics' {
         Assert-Equal ([IO.File]::ReadAllText((Join-Path $multiple 'second.txt'))) 'second'
 
         [IO.File]::WriteAllText($renamed, 'old')
-        $failed = $false
-        try { cp $first $renamed } catch { $failed = $true }
-        Assert-Equal $failed $true
+        cp $first $renamed
+        Assert-Equal $LASTEXITCODE 0
+        Assert-Equal ([IO.File]::ReadAllText($renamed)) 'first'
+        [IO.File]::WriteAllText((Join-Path $multiple 'first file.txt'), 'old')
+        cp $first $multiple
+        Assert-Equal $LASTEXITCODE 0
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multiple 'first file.txt'))) 'first'
         cp -f $first $renamed
         Assert-Equal ([IO.File]::ReadAllText($renamed)) 'first'
     } finally {
@@ -412,6 +437,33 @@ Test-Case 'cp -rf replaces readonly files and restores attributes on failed repl
         $source = Join-Path $root source.txt; $target = Join-Path $root target.txt
         [IO.File]::WriteAllText($source, 'new'); [IO.File]::WriteAllText($target, 'old')
         [IO.File]::SetAttributes($target, [IO.FileAttributes]::ReadOnly)
+        foreach ($targetArgument in @($target, $root)) {
+            if ($targetArgument -eq $root) {
+                # Use a separate source folder so copying to the target parent is not self-copy.
+                $sourceFolder = Join-Path $root inputs
+                [IO.Directory]::CreateDirectory($sourceFolder) | Out-Null
+                $inputFile = Join-Path $sourceFolder target.txt
+                [IO.File]::WriteAllText($inputFile, 'new')
+            } else { $inputFile = $source }
+            $failed = $false
+            try { cp $inputFile $targetArgument } catch { $failed = $true }
+            Assert-Equal $failed $true
+            Assert-Equal ([IO.File]::ReadAllText($target)) 'old'
+        }
+        $treeSource = Join-Path $root tree
+        $treeTarget = Join-Path $root 'out/tree'
+        [IO.Directory]::CreateDirectory($treeSource) | Out-Null
+        [IO.Directory]::CreateDirectory($treeTarget) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $treeSource 'value.txt'), 'new')
+        $treeFile = Join-Path $treeTarget value.txt
+        [IO.File]::WriteAllText($treeFile, 'old')
+        [IO.File]::SetAttributes($treeFile, [IO.FileAttributes]::ReadOnly)
+        $failed = $false
+        try { cp -r $treeSource (Join-Path $root out) } catch { $failed = $true }
+        Assert-Equal $failed $true
+        Assert-Equal ([IO.File]::ReadAllText($treeFile)) 'old'
+        cp -rf $treeSource (Join-Path $root out)
+        Assert-Equal ([IO.File]::ReadAllText($treeFile)) 'new'
         cp -rf $source $target
         Assert-Equal ([IO.File]::ReadAllText($target)) 'new'
         [IO.File]::WriteAllText($target, 'old')
@@ -429,8 +481,8 @@ Test-Case 'cp -rf replaces readonly files and restores attributes on failed repl
 }
 
 $cases = @(
-    ,@('drive argument', 'capture /c/work', 'capture C:/work')
-    ,@('unknown command needs no adapter', 'unknown-command /d/work', 'unknown-command D:/work')
+    ,@('drive argument', 'capture /c/work', 'capture /c/work')
+    ,@('unknown command preserves arguments', 'unknown-command /d/work', 'unknown-command /d/work')
     ,@('quoted literal', "capture '/c/work'", "capture '/c/work'")
     ,@('double quoted literal', 'capture "~/work"', 'capture "~/work"')
     ,@('literal substring', "capture 'use /c/demo'", "capture 'use /c/demo'")
@@ -438,50 +490,65 @@ $cases = @(
     ,@('parameter value', 'capture -Path:/c/a', 'capture -Path:/c/a')
     ,@('regex text', "capture '/c/users' README.md", "capture '/c/users' README.md")
     ,@('script text', "capture -Command 'Write-Output /c/demo'", "capture -Command 'Write-Output /c/demo'")
-    ,@('script block', 'capture { capture /c/a } /d/out', 'capture { capture /c/a } D:/out')
-    ,@('subexpression', 'capture $(capture /c/a) /d/out', 'capture $(capture /c/a) D:/out')
+    ,@('script block', 'capture { capture /c/a } /d/out', 'capture { capture /c/a } /d/out')
+    ,@('subexpression', 'capture $(capture /c/a) /d/out', 'capture $(capture /c/a) /d/out')
     ,@('explicit conversion', "capture (winpath '/c/my work')", "capture (winpath '/c/my work')")
-    ,@('comment', 'capture /c/a # /d/comment', 'capture C:/a # /d/comment')
-    ,@('compound tokens', "capture /c/a; capture '/d/literal' /e/b", "capture C:/a; capture '/d/literal' E:/b")
-    ,@('pipeline tokens', 'capture /c/a | capture /d/b', 'capture C:/a | capture D:/b')
-    ,@('pipeline chain tokens', 'capture /c/a && capture /d/b', 'capture C:/a && capture D:/b')
+    ,@('comment', 'capture /c/a # /d/comment', 'capture /c/a # /d/comment')
+    ,@('compound tokens', "capture /c/a; capture '/d/literal' /e/b", "capture /c/a; capture '/d/literal' /e/b")
+    ,@('pipeline tokens', 'capture /c/a | capture /d/b', 'capture /c/a | capture /d/b')
+    ,@('pipeline chain tokens', 'capture /c/a && capture /d/b', 'capture /c/a && capture /d/b')
     ,@('assignment body', '$text = capture /c/a', '$text = capture /c/a')
     ,@('conditional body', 'if ($true) { capture /c/a }', 'if ($true) { capture /c/a }')
     ,@('variable expression', 'capture /c/$name', 'capture /c/$name')
     ,@('escaped whitespace', 'capture /c/my` work', 'capture /c/my` work')
     ,@('quoted segment', 'capture /c/"my work"', 'capture /c/"my work"')
     ,@('stop parsing', 'capture --% /c/a', 'capture --% /c/a')
-    ,@('redirection', 'capture /c/a > /d/out', 'capture C:/a > /d/out')
+    ,@('redirection', 'capture /c/a > /d/out', 'capture /c/a > /d/out')
     ,@('function definition', 'function f { capture /c/a }', 'function f { capture /c/a }')
     ,@('incomplete input', "capture /c/a '", "capture /c/a '")
-    ,@('glob argument', 'capture /c/*.txt', "capture 'C:/*.txt'")
+    ,@('glob argument', 'capture /c/*.txt', 'capture /c/*.txt')
     ,@('relative argument', 'capture ./foo ../bar feature/name', 'capture ./foo ../bar feature/name')
     ,@('here string', "capture @'`n/c/data`n'@", "capture @'`n/c/data`n'@")
 )
 foreach ($case in $cases) {
     Test-Case $case[0] { Assert-Equal (ConvertTo-WindowsCommandLine $case[1]) $case[2] }
 }
-Test-Case 'home paths are emitted as one literal argument when HOME contains spaces' {
-    $expected = 'capture ' + (ConvertTo-QuotedText ($HOME.Replace('\', '/') + '/my-file'))
-    Assert-Equal (ConvertTo-WindowsCommandLine 'capture ~/my-file') $expected
+Test-Case 'Enter preserves search and option values before shared adapters run' {
+    $root = Join-Path $HOME 'enter semantics'
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    try {
+        $file = Join-Path $root data.txt
+        [IO.File]::WriteAllText($file, "literal /i/tmp`nother")
+        $line = 'grep /i/tmp ' + (ConvertTo-TestLiteral (unixpath $file))
+        Assert-Equal (Invoke-Expression (ConvertTo-WindowsCommandLine $line)) 'literal /i/tmp'
+        & (Get-Module fs) {
+            function eza { $args -join '|' }
+            $line = 'Invoke-Eza -Options @() -Arguments @(''--ignore-glob'', ''/i/*'', ''--'', ''/i/tmp'')'
+            $output = Invoke-Expression (ConvertTo-WindowsCommandLine $line)
+            if ($output -cne '--time-style=+%Y-%m-%d %H:%M:%S|--ignore-glob|/i/*|--|I:/tmp') { throw $output }
+        }
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force }
 }
-Test-Case 'functions and cmdlets use the same argument rewriting' {
+Test-Case 'Enter preserves home arguments even when HOME contains spaces' {
+    Assert-Equal (ConvertTo-WindowsCommandLine 'capture ~/my-file') 'capture ~/my-file'
+}
+Test-Case 'functions preserve ordinary arguments and execute explicit conversion' {
     function capture { $args }
     $line = ConvertTo-WindowsCommandLine "capture /c/a '/d/text' (winpath '/e/my work')"
-    Assert-Equal ((Invoke-Expression $line) -join '|') 'C:/a|/d/text|E:/my work'
+    Assert-Equal ((Invoke-Expression $line) -join '|') '/c/a|/d/text|E:/my work'
 }
-Test-Case 'native applications receive converted bare arguments and unchanged literals' {
+Test-Case 'native applications receive unchanged bare arguments and explicit conversion' {
     $receiver = Join-Path $HOME 'receive arguments.ps1'
     [IO.File]::WriteAllText($receiver, 'ConvertTo-Json -InputObject @($args) -Compress')
     $pwsh = (Get-Process -Id $PID).Path
     $line = '& ' + (ConvertTo-TestLiteral $pwsh) + ' -NoLogo -NoProfile -File ' + (ConvertTo-TestLiteral $receiver) + " /c/a '/d/literal' (winpath '/e/my work')"
     $received = Invoke-Expression (ConvertTo-WindowsCommandLine $line) | ConvertFrom-Json
-    Assert-Equal ($received -join '|') 'C:/a|/d/literal|E:/my work'
+    Assert-Equal ($received -join '|') '/c/a|/d/literal|E:/my work'
 }
-Test-Case 'unsafe converted paths are quoted to prevent PowerShell interpretation' {
+Test-Case 'path-shaped bracket text is preserved as an argument' {
     function capture { $args }
     $line = ConvertTo-WindowsCommandLine 'capture /c/[draft].txt'
-    Assert-Equal (Invoke-Expression $line) 'C:/[draft].txt'
+    Assert-Equal (Invoke-Expression $line) '/c/[draft].txt'
 }
 Test-Case 'known path operands convert drive prefixes but not embedded text' {
     Assert-Equal ((ConvertTo-WindowsPathOperands @('/c/no-such-test-item')) -join '|') 'C:/no-such-test-item'

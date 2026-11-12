@@ -22,7 +22,7 @@ function global:cd {
 
     $current = (Get-Location).Path
     try {
-        Set-Location -LiteralPath (Resolve-WindowsPath $target) -ErrorAction Stop
+        Set-Location -LiteralPath (Resolve-WindowsPath $target -PreserveProvider) -ErrorAction Stop
         $script:PreviousDirectory = $current
     } catch {
         Write-Error $_
@@ -402,13 +402,26 @@ function global:cp {
                 Join-Path $destination $item.Name
             } else { $destination }
             Assert-CopyPathWithoutLinks $targetPath -Recurse:($item -is [IO.DirectoryInfo])
+            if (-not $copyOptions.Contains('f')) {
+                # Robocopy can clear ReadOnly itself; keep the same -f policy for
+                # explicit file targets, parent-directory targets, and directory trees.
+                $files = if ($item -is [IO.DirectoryInfo]) {
+                    $item.EnumerateFiles('*', [IO.SearchOption]::AllDirectories)
+                } else { @($item) }
+                foreach ($file in $files) {
+                    $fileTarget = if ($item -is [IO.DirectoryInfo]) {
+                        Join-Path $targetPath ([IO.Path]::GetRelativePath($item.FullName, $file.FullName))
+                    } else { $targetPath }
+                    if ([IO.File]::Exists($fileTarget) -and
+                        ([IO.File]::GetAttributes($fileTarget) -band [IO.FileAttributes]::ReadOnly)) {
+                        throw "cp: destination is read-only; use -f: '$fileTarget'."
+                    }
+                }
+            }
         }
         [IO.Directory]::CreateDirectory($copyRoot) | Out-Null
         if ($singleFileRename -and $sourceItems[0].FullName.Equals($destination, [StringComparison]::OrdinalIgnoreCase)) {
             throw 'cp: source and destination are the same file.'
-        }
-        if ($singleFileRename -and (Test-Path -LiteralPath $destination) -and -not $copyOptions.Contains('f')) {
-            throw "cp: destination already exists: '$destination'."
         }
         if ($destinationDirectory -and -not $destinationExists) {
             [IO.Directory]::CreateDirectory($destination) | Out-Null
@@ -438,7 +451,26 @@ function global:cp {
             # Same, Tweaked and Modified are distinct Robocopy file classes.
             # /IM includes matching size/mtime files with a different NTFS change time.
             $arguments += @('/COPY:DAT', '/IS', '/IT', '/IM', '/XJ', '/R:1', '/W:1', '/NFL', '/NDL', '/NP', '/NJH', '/NJS')
+            $clearedAttributes = [Collections.Generic.Dictionary[string, IO.FileAttributes]]::new([StringComparer]::OrdinalIgnoreCase)
             try {
+                if ($copyOptions.Contains('f') -and -not $singleFileRename) {
+                    $files = if ($item -is [IO.DirectoryInfo]) {
+                        $item.EnumerateFiles('*', [IO.SearchOption]::AllDirectories)
+                    } else { @($item) }
+                    foreach ($file in $files) {
+                        $fileTarget = if ($item -is [IO.DirectoryInfo]) {
+                            Join-Path $writeRoot ([IO.Path]::GetRelativePath($item.FullName, $file.FullName))
+                        } else { Join-Path $writeRoot $file.Name }
+                        if ([IO.File]::Exists($fileTarget)) {
+                            $attributes = [IO.File]::GetAttributes($fileTarget)
+                            if ($attributes -band [IO.FileAttributes]::ReadOnly) {
+                                Assert-CopyPathWithoutLinks $fileTarget
+                                $clearedAttributes[$fileTarget] = $attributes
+                                [IO.File]::SetAttributes($fileTarget, $attributes -band (-bnot [IO.FileAttributes]::ReadOnly))
+                            }
+                        }
+                    }
+                }
                 & $robocopy @arguments | Out-Null
                 $robocopyCode = $LASTEXITCODE
                 if ($robocopyCode -ge 8) {
@@ -456,7 +488,7 @@ function global:cp {
                         }
                     }
                     try {
-                        [IO.File]::Move($copiedPath, $destination, $copyOptions.Contains('f'))
+                        [IO.File]::Move($copiedPath, $destination, $true)
                     } catch {
                         if ($null -ne $originalAttributes -and [IO.File]::Exists($destination)) {
                             [IO.File]::SetAttributes($destination, $originalAttributes)
@@ -464,6 +496,11 @@ function global:cp {
                         throw
                     }
                 }
+            } catch {
+                foreach ($path in $clearedAttributes.Keys) {
+                    if ([IO.File]::Exists($path)) { [IO.File]::SetAttributes($path, $clearedAttributes[$path]) }
+                }
+                throw
             } finally {
                 if ($staging -and [IO.Directory]::Exists($staging)) {
                     [IO.Directory]::Delete($staging, $true)

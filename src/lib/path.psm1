@@ -1,4 +1,4 @@
-# 路径转换与补全。显式转换处理单个路径；交互改写只处理顶层裸参数。
+# 共享路径转换与补全。命令适配器处理路径参数；Enter 只识别独立目录跳转。
 
 . ([IO.Path]::Combine($PSScriptRoot, 'path_convert.ps1'))
 
@@ -109,7 +109,6 @@ function ConvertTo-WindowsCommandLine {
     $errors = $null
     $ast = [Management.Automation.Language.Parser]::ParseInput($InputScript, [ref]$tokens, [ref]$errors)
     if ($errors.Count) { return $InputScript }
-    $changes = [Collections.Generic.List[object]]::new()
     $commands = $ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] }, $false)
     foreach ($command in $commands) {
         # Only top-level pipelines/chains; never descend into subexpressions or script bodies.
@@ -133,28 +132,10 @@ function ConvertTo-WindowsCommandLine {
                 }
             }
         }
-        for ($index = 1; $index -lt $elements.Count; $index++) {
-            $element = $elements[$index]
-            if ($element.Extent.Text -eq '--%') { break }
-            if ($element -isnot [Management.Automation.Language.StringConstantExpressionAst] -or
-                $element.StringConstantType -ne 'BareWord' -or
-                $element.Extent.Text -cne $element.Value -or
-                $element.Value -notmatch '^(?:/[A-Za-z](?:/[^\s]*|$)|~(?:/[^\s]*|$))$') {
-                continue
-            }
-            $converted = winpath $element.Value
-            $changes.Add([pscustomobject]@{
-                Start = $element.Extent.StartOffset
-                Length = $element.Extent.EndOffset - $element.Extent.StartOffset
-                Text = ConvertTo-QuotedText $converted
-            })
-        }
     }
-    $result = $InputScript
-    foreach ($change in ($changes | Sort-Object Start -Descending)) {
-        $result = $result.Remove($change.Start, $change.Length).Insert($change.Start, $change.Text)
-    }
-    return $result
+    # Parameter roles cannot be inferred safely from path-shaped text alone.
+    # Known adapters and explicit winpath expressions perform argument conversion.
+    return $InputScript
 }
 
 
@@ -166,11 +147,17 @@ function ConvertTo-WindowsArguments {
 }
 
 function Resolve-WindowsPath {
-    param([string]$Path)
+    param([string]$Path, [switch]$PreserveProvider)
     $windowsPath = winpath $Path
-    # Resolve against PowerShell's location, not the process working directory.
-    # Literal resolution also works for destinations that do not exist yet.
-    return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($windowsPath)
+    # Retain provider-qualified navigation syntax instead of returning native
+    # provider paths (e.g. HKEY_CURRENT_USER or an empty Env root).
+    $provider = $null
+    $drive = $null
+    $resolved = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(
+        $windowsPath, [ref]$provider, [ref]$drive
+    )
+    if ($PreserveProvider -and $provider.Name -ne 'FileSystem') { return $windowsPath }
+    return $resolved
 }
 
 # Fail closed for copy operations: never traverse a reparse point, including

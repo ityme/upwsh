@@ -59,9 +59,9 @@ cd ~/Desktop
 cd -                         # Return to the previous directory
 ```
 
-Standalone, unquoted `/c/...` and `~/...` arguments are converted to Windows paths before execution. Quoted text stays unchanged, so strings such as `'use /c/demo'` keep their meaning.
+Built-in filesystem commands accept `/c/...` and `~/...` paths, including quoted paths and variables. Enter leaves command arguments unchanged, so search expressions and option values retain their meaning.
 
-For paths with spaces, variables, or paths in scripts, use `winpath`. Use `unixpath` for the reverse conversion:
+For external commands, use `winpath` explicitly when a Windows path is required. Use `unixpath` for the reverse conversion:
 
 ```powershell
 winpath '/c/my work'          # C:/my work
@@ -70,7 +70,7 @@ cd (winpath '~/my work')
 'C:\one', 'D:\two' | unixpath
 ```
 
-Both commands accept multiple paths and pipeline input; paths need not exist. Tab inserts `(winpath '…')` when an absolute Unix path needs quoting. Comments, embedded scripts, redirections, and combined arguments such as `--output=/c/a` are not automatically rewritten.
+Both commands accept multiple paths and pipeline input; paths need not exist. Tab inserts `(winpath '…')` when an absolute Unix path needs quoting. A standalone existing directory still becomes a `cd` command. Other command text, including bare arguments, comments, scripts, redirections, and combined options, is not automatically rewritten. `cp` overwrites ordinary existing files; `-f` additionally allows replacing read-only targets without bypassing locks or permissions.
 
 `rm` sends local fixed-drive files to the Recycle Bin. Windows reserved names (`nul`, `con`, `aux`, `prn`, `com1`–`com9`, `lpt1`–`lpt9`) cannot use that API. Tab skips them. Delete with an extended path: `[IO.File]::Delete('\\?\D:\work\nul')`.
 
