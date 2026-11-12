@@ -24,6 +24,11 @@ function Assert-Equal {
     if ([string]$Actual -cne [string]$Expected) { throw "expected <$Expected>, got <$Actual>" }
 }
 
+Test-Case 'copy adapter stays private to filesystem commands' {
+    Assert-Equal ([bool](Get-Command Invoke-UpwshCopy -ErrorAction SilentlyContinue)) $false
+    Assert-Equal ([bool](Get-Command Assert-CopyPathWithoutLinks -ErrorAction SilentlyContinue)) $false
+    Assert-Equal (((Get-Module fs).NestedModules.Name) -join '|') 'copy'
+}
 Test-Case 'standalone converter copies match the shared implementation' {
     & (Join-Path $PSScriptRoot '..\src\script\sync_path_convert.ps1') -Check | Out-Null
 }
@@ -423,7 +428,12 @@ Test-Case 'copy preflight rejects dangling symbolic links without following them
             return
         }
         $message = ''
-        try { Assert-CopyPathWithoutLinks $link } catch { $message = $_.Exception.Message }
+        try {
+            & (Get-Module fs) {
+                param($path)
+                & (Get-Module copy) { param($p) Assert-CopyPathWithoutLinks $p } $path
+            } $link
+        } catch { $message = $_.Exception.Message }
         if ($message -notmatch 'reparse point') { throw "dangling symbolic link not rejected: $message" }
     } finally {
         if ([IO.File]::Exists($link)) { [IO.File]::Delete($link) }

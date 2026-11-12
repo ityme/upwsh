@@ -57,7 +57,7 @@ function Test-UpwshRuntime {
     foreach ($name in @(
         'profile.ps1',
         'lib\path_convert.ps1', 'lib\upwsh_home.ps1', 'lib\alias.ps1',
-        'lib\path.psm1', 'lib\unix.psm1', 'lib\fs.psm1', 'lib\proc.psm1', 'lib\text.psm1', 'lib\sys.psm1',
+        'lib\path.psm1', 'lib\unix.psm1', 'lib\copy.psm1', 'lib\fs.psm1', 'lib\proc.psm1', 'lib\text.psm1', 'lib\sys.psm1',
         'lib\tool.psm1', 'lib\upwsh.psm1', 'lib\completion.psm1', 'lib\git_completion.psm1', 'lib\theme.psm1', 'lib\prompt.psm1', 'lib\term.psm1', 'lib\hook.psm1',
         'theme\pure-classic.json',
         'script\install.ps1', 'script\update.ps1', 'script\uninstall.ps1',

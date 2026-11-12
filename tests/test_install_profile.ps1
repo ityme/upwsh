@@ -174,6 +174,7 @@ try {
         $text = [IO.File]::ReadAllText($hook)
         Assert-Contains $output 'state     deployed'
         Assert-True (Test-Path -LiteralPath $deployedProfile -PathType Leaf) 'deploy missed profile.ps1'
+        Assert-True (Test-Path -LiteralPath (Join-Path $deployRoot 'lib\copy.psm1') -PathType Leaf) 'deploy missed internal copy adapter'
         Assert-True (
             Test-Path -LiteralPath (Join-Path $deployRoot 'script\install_profile.ps1')
         ) 'deploy missed install_profile.ps1'
