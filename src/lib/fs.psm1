@@ -378,6 +378,21 @@ function global:cp {
             [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($destination))
         }
         if ([string]::IsNullOrWhiteSpace($copyRoot)) { $copyRoot = (Get-Location).ProviderPath }
+        # Validate every directory source before creating or copying any destination.
+        foreach ($directory in $directories) {
+            $sourcePath = [IO.Path]::GetFullPath($directory.FullName).TrimEnd('\', '/')
+            $destinationPath = [IO.Path]::GetFullPath($destination).TrimEnd('\', '/')
+            if ($destinationPath.Equals($sourcePath, [StringComparison]::OrdinalIgnoreCase) -or
+                $destinationPath.StartsWith($sourcePath + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                throw "cp: cannot copy '$sourcePath' into itself or its subdirectory '$destinationPath'."
+            }
+            $targetPath = if ($destinationExists -or $sourceItems.Count -gt 1) {
+                Join-Path $destination $directory.Name
+            } else { $destination }
+            if ([IO.Path]::GetFullPath($targetPath).TrimEnd('\', '/').Equals($sourcePath, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "cp: source and destination are the same directory: '$sourcePath'."
+            }
+        }
         [IO.Directory]::CreateDirectory($copyRoot) | Out-Null
         if ($singleFileRename -and $sourceItems[0].FullName.Equals($destination, [StringComparison]::OrdinalIgnoreCase)) {
             throw 'cp: source and destination are the same file.'
@@ -399,7 +414,11 @@ function global:cp {
             $staging = if ($singleFileRename) {
                 Join-Path $copyRoot ('.upwsh-copy-' + [guid]::NewGuid().ToString('N'))
             } else { $null }
-            $writeRoot = if ($staging) { $staging } else { $copyRoot }
+            $writeRoot = if ($staging) {
+                $staging
+            } elseif ($item -is [IO.DirectoryInfo] -and ($destinationExists -or $sourceItems.Count -gt 1)) {
+                Join-Path $destination $item.Name
+            } else { $copyRoot }
             $arguments = @($sourceRoot, $writeRoot)
             if ($item -is [IO.DirectoryInfo]) {
                 $arguments += @('/E', '/DCOPY:DAT')

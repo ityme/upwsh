@@ -132,7 +132,8 @@ Test-Case 'cp -rf overwrites renamed files and existing directories repeatedly' 
         cp -rf $source $destination
         cp -rf $source $destination
         Assert-Equal $LASTEXITCODE 0
-        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'a.txt'))) 'new'
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'source\a.txt'))) 'new'
+        Assert-Equal ([IO.File]::ReadAllText($unrelated)) 'keep'
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -151,16 +152,37 @@ Test-Case 'cp recursive directory copy preserves destination layout and never mi
 
         [IO.File]::WriteAllText((Join-Path $destination 'keep.txt'), 'keep')
         cp -r $source $destination
-        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'nested\source.txt'))) 'source'
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'source\nested\source.txt'))) 'source'
         Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'keep.txt'))) 'keep'
+        cp -rf $source $destination
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $destination 'source\source')) $false
 
         $secondSource = Join-Path $root 'second'
         [IO.Directory]::CreateDirectory($secondSource) | Out-Null
         [IO.File]::WriteAllText((Join-Path $secondSource 'second.txt'), 'second')
         $multipleDestination = Join-Path $root 'multiple'
         cp -r $source,$secondSource $multipleDestination
-        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multipleDestination 'nested\source.txt'))) 'source'
-        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multipleDestination 'second.txt'))) 'second'
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multipleDestination 'source\nested\source.txt'))) 'source'
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multipleDestination 'second\second.txt'))) 'second'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+Test-Case 'cp refuses self and descendant destinations before creating files' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-cp-self-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $source = Join-Path $root 'source'
+        [IO.Directory]::CreateDirectory($source) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $source 'value.txt'), 'keep')
+        foreach ($target in @($source, (Join-Path $source 'backup'), (Join-Path $source 'child\backup'), $root)) {
+            $message = ''
+            try { cp -rf $source $target } catch { $message = $_.Exception.Message }
+            Assert-Equal $LASTEXITCODE 1
+            if ($message -notmatch 'itself|same directory') { throw "missing self-copy explanation: $message" }
+        }
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $source 'backup')) $false
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $source 'child')) $false
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $source 'value.txt'))) 'keep'
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -173,7 +195,8 @@ Test-Case 'cp recursive copy replaces files with unchanged timestamps and size' 
         [IO.Directory]::CreateDirectory($source) | Out-Null
         [IO.Directory]::CreateDirectory($destination) | Out-Null
         $sourceFile = Join-Path $source 'value.txt'
-        $destinationFile = Join-Path $destination 'value.txt'
+        [IO.Directory]::CreateDirectory((Join-Path $destination 'source')) | Out-Null
+        $destinationFile = Join-Path $destination 'source\value.txt'
         [IO.File]::WriteAllText($sourceFile, 'new')
         [IO.File]::WriteAllText($destinationFile, 'old')
         $timestamp = [datetime]'2020-01-02T03:04:05'
@@ -181,7 +204,7 @@ Test-Case 'cp recursive copy replaces files with unchanged timestamps and size' 
         [IO.File]::SetLastWriteTime($destinationFile, $timestamp)
 
         cp -r $source $destination
-        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'value.txt'))) 'new'
+        Assert-Equal ([IO.File]::ReadAllText($destinationFile)) 'new'
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
