@@ -34,7 +34,7 @@ $script:Tools = @(
     @{ Name = 'jq'; Repo = 'jqlang/jq'; Exe = 'jq.exe' }
     @{ Name = 'lazygit'; Repo = 'jesseduffield/lazygit'; Exe = 'lazygit.exe' }
     @{ Name = 'procs'; Repo = 'dalance/procs'; Exe = 'procs.exe' }
-    @{ Name = 'rg'; Repo = 'BurntSushi/ripgrep'; Exe = 'rg.exe' }
+    @{ Name = 'rg'; DisplayName = 'ripgrep'; Repo = 'BurntSushi/ripgrep'; Exe = 'rg.exe' }
     @{ Name = 'shfmt'; Repo = 'mvdan/sh'; Exe = 'shfmt.exe' }
     @{ Name = 'starship'; Repo = 'starship/starship'; Exe = 'starship.exe' }
     @{ Name = 'tssh'; Repo = 'trzsz/trzsz-ssh'; Exe = 'tssh.exe' }
@@ -217,8 +217,9 @@ if ($Update -and $InstalledOnly) {
 
 if ($List) {
     foreach ($tool in $selected) {
+        $displayName = if ($tool.DisplayName) { $tool.DisplayName } else { $tool.Name }
         Write-CliToolListLine `
-            -Name $tool.Name `
+            -Name $displayName `
             -Installed:(Test-CliToolCommand $tool.Name)
     }
     return

@@ -521,14 +521,19 @@ try {
         }
     }
 
-    Invoke-UpwshTest 'tool short flags list the upwsh tools' {
+    Invoke-UpwshTest 'tool list displays ripgrep while accepting the rg command name' {
         $savedPath = $env:PATH
         try {
             $env:PATH = $toolBin
             $result = Invoke-Upwsh -Tokens @('tool', 'list', 'rg')
             Assert-Equal $result.Code 0
-            Assert-Contains $result.Text 'rg'
+            Assert-Contains $result.Text 'ripgrep'
             Assert-Contains $result.Text 'uninstalled'
+            [IO.File]::WriteAllText((Join-Path $toolBin 'rg.exe'), 'stub')
+            $result = Invoke-Upwsh -Tokens @('tool', 'list', 'rg')
+            Assert-Equal $result.Code 0
+            Assert-Contains $result.Text 'ripgrep'
+            Assert-True ($result.Text -notmatch 'uninstalled') 'ripgrep detection did not use rg.exe'
         } finally {
             $env:PATH = $savedPath
         }
