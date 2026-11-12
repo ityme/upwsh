@@ -114,7 +114,7 @@ Git 单词唯一匹配时，补全后自动加空格。每段都只有一个匹�
 
 ## CLI 工具
 
-按需安装到 `~/.config/upwsh/tool/bin`：
+工具按需安装到 `~/.config/upwsh/tool/bin`。`rg`（ripgrep）可用 `upwsh tool install rg` 安装。
 
 ```powershell
 upwsh tool list

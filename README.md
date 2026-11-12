@@ -114,7 +114,7 @@ The install directory is fixed at `~/.config/upwsh`; `UPWSH_HOME` records it. Th
 
 ## CLI tools
 
-Install tools as needed into `~/.config/upwsh/tool/bin`:
+Install tools as needed into `~/.config/upwsh/tool/bin`. `rg` (ripgrep) is available with `upwsh tool install rg`.
 
 ```powershell
 upwsh tool list

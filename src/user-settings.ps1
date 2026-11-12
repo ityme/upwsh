@@ -8,4 +8,5 @@
 # $script:CommandMap['i'] = 'cd /i/ispace'
 # $script:CommandMap['d'] = 'cd ~/Desktop'
 # $script:CommandMap['gs'] = 'git status'
+# $script:CommandMap['ag'] = 'rg'
 # Install-CommandMap
