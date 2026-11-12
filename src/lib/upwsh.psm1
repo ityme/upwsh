@@ -12,7 +12,7 @@ $script:UpwshCommands = @('install', 'update', 'uninstall', 'tool', 'theme', 'ed
 $script:UpwshToolActions = @('list', 'install', 'update', 'uninstall')
 $script:UpwshToolNames = @(
     'bat', 'btm', 'delta', 'difft', 'dust', 'duf', 'eza', 'fd', 'fzf', 'gh',
-    'hyperfine', 'jq', 'lazygit', 'procs', 'rg', 'shfmt', 'starship', 'tssh',
+    'hyperfine', 'jq', 'lazygit', 'procs', 'ripgrep', 'shfmt', 'starship', 'tssh',
     'yazi', 'yq', 'zoxide'
 )
 

@@ -114,14 +114,14 @@ Git 单词唯一匹配时，补全后自动加空格。每段都只有一个匹�
 
 ## CLI 工具
 
-工具按需安装到 `~/.config/upwsh/tool/bin`。`rg`（ripgrep）可用 `upwsh tool install rg` 安装。
+工具按需安装到 `~/.config/upwsh/tool/bin`。使用 `upwsh tool install ripgrep` 安装 ripgrep，安装后运行 `rg`。
 
 ```powershell
 upwsh tool list
-upwsh tool install eza rg fd fzf
+upwsh tool install eza ripgrep fd fzf
 upwsh tool update eza
 upwsh tool update --all
-upwsh tool uninstall rg
+upwsh tool uninstall ripgrep
 ```
 
 ## 主题

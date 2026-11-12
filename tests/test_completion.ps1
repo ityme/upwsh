@@ -541,6 +541,10 @@ Set-Alias -Name user_settings_marker -Value Get-Date -Scope Global -Force
         $values = @($state.Matches | ForEach-Object CompletionText)
         Assert-Contains $values 'duf'
         Assert-Contains $values 'dust'
+        $state = Complete-HookLine -Line 'upwsh tool install ri'
+        $values = @($state.Matches | ForEach-Object CompletionText)
+        Assert-Contains $values 'ripgrep'
+        Assert-True ('rg' -notin $values) 'tool completion used the executable name instead of the package name'
     }
     Invoke-CompletionTest 'upwsh: theme use completes installed theme names' {
         $themeDir = Join-Path $fakeHome '.config\upwsh\theme'

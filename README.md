@@ -114,14 +114,14 @@ The install directory is fixed at `~/.config/upwsh`; `UPWSH_HOME` records it. Th
 
 ## CLI tools
 
-Install tools as needed into `~/.config/upwsh/tool/bin`. `rg` (ripgrep) is available with `upwsh tool install rg`.
+Install tools as needed into `~/.config/upwsh/tool/bin`. Install ripgrep with `upwsh tool install ripgrep`, then run it with `rg`.
 
 ```powershell
 upwsh tool list
-upwsh tool install eza rg fd fzf
+upwsh tool install eza ripgrep fd fzf
 upwsh tool update eza
 upwsh tool update --all
-upwsh tool uninstall rg
+upwsh tool uninstall ripgrep
 ```
 
 ## Themes

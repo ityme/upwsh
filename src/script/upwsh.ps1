@@ -6,7 +6,7 @@
 #   upwsh uninstall
 #   upwsh update
 #   upwsh tool list
-#   upwsh tool install eza rg
+#   upwsh tool install eza ripgrep
 #   upwsh tool install --all
 #   upwsh tool update eza
 #   upwsh tool update --all
@@ -66,7 +66,7 @@ examples:
 'upwsh --help' prints this overview.
 
 Listed tools: bat btm delta difft dust duf eza fd fzf gh hyperfine jq lazygit procs
-rg shfmt starship tssh yazi yq zoxide
+ripgrep shfmt starship tssh yazi yq zoxide
 '@
 }
 

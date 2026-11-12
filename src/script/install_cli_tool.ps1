@@ -1,6 +1,6 @@
 # 由 upwsh tool 调用。可执行文件装到 $UPWSH_HOME\tool\bin。
 #   upwsh tool list
-#   upwsh tool install eza rg
+#   upwsh tool install eza ripgrep
 #   upwsh tool install --all
 #   upwsh tool update eza
 #   upwsh tool update --all
@@ -34,7 +34,7 @@ $script:Tools = @(
     @{ Name = 'jq'; Repo = 'jqlang/jq'; Exe = 'jq.exe' }
     @{ Name = 'lazygit'; Repo = 'jesseduffield/lazygit'; Exe = 'lazygit.exe' }
     @{ Name = 'procs'; Repo = 'dalance/procs'; Exe = 'procs.exe' }
-    @{ Name = 'rg'; DisplayName = 'ripgrep'; Repo = 'BurntSushi/ripgrep'; Exe = 'rg.exe' }
+    @{ Name = 'ripgrep'; Repo = 'BurntSushi/ripgrep'; Exe = 'rg.exe' }
     @{ Name = 'shfmt'; Repo = 'mvdan/sh'; Exe = 'shfmt.exe' }
     @{ Name = 'starship'; Repo = 'starship/starship'; Exe = 'starship.exe' }
     @{ Name = 'tssh'; Repo = 'trzsz/trzsz-ssh'; Exe = 'tssh.exe' }
@@ -217,10 +217,9 @@ if ($Update -and $InstalledOnly) {
 
 if ($List) {
     foreach ($tool in $selected) {
-        $displayName = if ($tool.DisplayName) { $tool.DisplayName } else { $tool.Name }
         Write-CliToolListLine `
-            -Name $displayName `
-            -Installed:(Test-CliToolCommand $tool.Name)
+            -Name $tool.Name `
+            -Installed:(Test-CliToolCommand ([IO.Path]::GetFileNameWithoutExtension($tool.Exe)))
     }
     return
 }
