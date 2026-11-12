@@ -20,27 +20,27 @@ $ErrorActionPreference = 'Stop'
 $Dir = Get-UpwshToolBin
 
 $script:Tools = @(
-    @{ Name = 'bat'; Repo = 'sharkdp/bat'; Exe = 'bat.exe' }
-    @{ Name = 'btm'; Repo = 'ClementTsang/bottom'; Exe = 'btm.exe' }
-    @{ Name = 'delta'; Repo = 'dandavison/delta'; Exe = 'delta.exe' }
-    @{ Name = 'difft'; Repo = 'Wilfred/difftastic'; Exe = 'difft.exe' }
-    @{ Name = 'dust'; Repo = 'bootandy/dust'; Exe = 'dust.exe' }
-    @{ Name = 'duf'; Repo = 'muesli/duf'; Exe = 'duf.exe' }
-    @{ Name = 'eza'; Repo = 'eza-community/eza'; Exe = 'eza.exe' }
-    @{ Name = 'fd'; Repo = 'sharkdp/fd'; Exe = 'fd.exe' }
-    @{ Name = 'fzf'; Repo = 'junegunn/fzf'; Exe = 'fzf.exe' }
-    @{ Name = 'gh'; Repo = 'cli/cli'; Exe = 'gh.exe' }
-    @{ Name = 'hyperfine'; Repo = 'sharkdp/hyperfine'; Exe = 'hyperfine.exe' }
-    @{ Name = 'jq'; Repo = 'jqlang/jq'; Exe = 'jq.exe' }
-    @{ Name = 'lazygit'; Repo = 'jesseduffield/lazygit'; Exe = 'lazygit.exe' }
-    @{ Name = 'procs'; Repo = 'dalance/procs'; Exe = 'procs.exe' }
-    @{ Name = 'ripgrep'; Repo = 'BurntSushi/ripgrep'; Exe = 'rg.exe' }
-    @{ Name = 'shfmt'; Repo = 'mvdan/sh'; Exe = 'shfmt.exe' }
-    @{ Name = 'starship'; Repo = 'starship/starship'; Exe = 'starship.exe' }
-    @{ Name = 'tssh'; Repo = 'trzsz/trzsz-ssh'; Exe = 'tssh.exe' }
-    @{ Name = 'yazi'; Repo = 'sxyazi/yazi'; Exe = 'yazi.exe' }
-    @{ Name = 'yq'; Repo = 'mikefarah/yq'; Exe = 'yq.exe' }
-    @{ Name = 'zoxide'; Repo = 'ajeetdsouza/zoxide'; Exe = 'zoxide.exe' }
+    @{ Name = 'bat'; Description = 'Syntax-highlighted cat alternative'; Repo = 'sharkdp/bat'; Exe = 'bat.exe' }
+    @{ Name = 'btm'; Description = 'System monitor; top alternative'; Repo = 'ClementTsang/bottom'; Exe = 'btm.exe' }
+    @{ Name = 'delta'; Description = 'Readable, highlighted Git diffs'; Repo = 'dandavison/delta'; Exe = 'delta.exe' }
+    @{ Name = 'difft'; Description = 'Syntax-aware diff tool'; Repo = 'Wilfred/difftastic'; Exe = 'difft.exe' }
+    @{ Name = 'dust'; Description = 'Disk usage; du alternative'; Repo = 'bootandy/dust'; Exe = 'dust.exe' }
+    @{ Name = 'duf'; Description = 'Free disk space; df alternative'; Repo = 'muesli/duf'; Exe = 'duf.exe' }
+    @{ Name = 'eza'; Description = 'File listing; ls alternative'; Repo = 'eza-community/eza'; Exe = 'eza.exe' }
+    @{ Name = 'fd'; Description = 'File search; find alternative'; Repo = 'sharkdp/fd'; Exe = 'fd.exe' }
+    @{ Name = 'fzf'; Description = 'Interactive fuzzy finder'; Repo = 'junegunn/fzf'; Exe = 'fzf.exe' }
+    @{ Name = 'gh'; Description = 'GitHub from the command line'; Repo = 'cli/cli'; Exe = 'gh.exe' }
+    @{ Name = 'hyperfine'; Description = 'Command-line benchmarking'; Repo = 'sharkdp/hyperfine'; Exe = 'hyperfine.exe' }
+    @{ Name = 'jq'; Description = 'JSON query and transformation'; Repo = 'jqlang/jq'; Exe = 'jq.exe' }
+    @{ Name = 'lazygit'; Description = 'Terminal UI for Git'; Repo = 'jesseduffield/lazygit'; Exe = 'lazygit.exe' }
+    @{ Name = 'procs'; Description = 'Process viewer; ps alternative'; Repo = 'dalance/procs'; Exe = 'procs.exe' }
+    @{ Name = 'ripgrep'; Description = 'Fast text search; grep alternative (rg)'; Repo = 'BurntSushi/ripgrep'; Exe = 'rg.exe' }
+    @{ Name = 'shfmt'; Description = 'Shell script formatter'; Repo = 'mvdan/sh'; Exe = 'shfmt.exe' }
+    @{ Name = 'starship'; Description = 'Customizable shell prompt'; Repo = 'starship/starship'; Exe = 'starship.exe' }
+    @{ Name = 'tssh'; Description = 'SSH client with file transfer'; Repo = 'trzsz/trzsz-ssh'; Exe = 'tssh.exe' }
+    @{ Name = 'yazi'; Description = 'Terminal file manager'; Repo = 'sxyazi/yazi'; Exe = 'yazi.exe' }
+    @{ Name = 'yq'; Description = 'YAML query and transformation'; Repo = 'mikefarah/yq'; Exe = 'yq.exe' }
+    @{ Name = 'zoxide'; Description = 'Smarter directory navigation; cd alternative'; Repo = 'ajeetdsouza/zoxide'; Exe = 'zoxide.exe' }
 )
 
 function Test-WindowsAmd64Asset {
@@ -112,17 +112,15 @@ function Test-CliToolCommand {
 }
 
 function Write-CliToolListLine {
-    param([string]$Name, [bool]$Installed)
+    param([string]$Name, [bool]$Installed, [string]$Description)
 
-    $reset = $PSStyle.Reset
-    if ($Installed) {
-        $mark = "$($PSStyle.Foreground.Green)+$reset"
-        $state = "$($PSStyle.Foreground.Green)installed$reset"
-    } else {
-        $mark = "$($PSStyle.Foreground.Yellow)-$reset"
-        $state = "$($PSStyle.Foreground.Yellow)uninstalled$reset"
+    $state = if ($Installed) { 'installed' } else { 'uninstalled' }
+    $state = '{0,-11}' -f $state
+    if (Test-UpwshStatusColor) {
+        $color = if ($Installed) { $PSStyle.Foreground.Green } else { $PSStyle.Foreground.Yellow }
+        $state = "$color$state$($PSStyle.Reset)"
     }
-    Write-Output ("{0} {1,-10} {2}" -f $mark, $Name, $state)
+    Write-Output ('{0,-10} | {1} | {2}' -f $Name, $state, $Description)
 }
 
 function Uninstall-CliTool {
@@ -216,10 +214,13 @@ if ($Update -and $InstalledOnly) {
 }
 
 if ($List) {
+    Write-Output ('{0,-10} | {1,-11} | {2}' -f 'Command', 'Installed', 'Description')
+    Write-Output ('{0}-+-{1}-+-{2}' -f ('-' * 10), ('-' * 11), ('-' * 45))
     foreach ($tool in $selected) {
         Write-CliToolListLine `
             -Name $tool.Name `
-            -Installed:(Test-CliToolCommand ([IO.Path]::GetFileNameWithoutExtension($tool.Exe)))
+            -Installed:(Test-CliToolCommand ([IO.Path]::GetFileNameWithoutExtension($tool.Exe))) `
+            -Description $tool.Description
     }
     return
 }

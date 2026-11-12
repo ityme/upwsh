@@ -498,11 +498,30 @@ try {
             Assert-Equal $result.Code 0
             Assert-Contains $result.Text 'eza'
             Assert-Contains $result.Text 'uninstalled'
+            Assert-Contains $result.Text 'Command    | Installed   | Description'
+            Assert-Contains $result.Text '-----------+-------------+'
+            Assert-Contains $result.Text 'File listing; ls alternative'
             Assert-True ($result.Text -notmatch 'bat') 'tool list leaked extra tools'
             Assert-True ($result.Text -notmatch 'dir') 'tool list printed install dir'
         } finally {
             $env:PATH = $savedPath
         }
+    }
+
+    Invoke-UpwshTest 'tool list gives every tool a one-line description with aligned columns' {
+        $result = Invoke-Upwsh -Tokens @('tool', 'list')
+        Assert-Equal $result.Code 0
+        $lines = @($result.Text -split '\r?\n' | Where-Object { $_.Trim() })
+        Assert-Equal $lines.Count 23
+        foreach ($line in $lines | Select-Object -Skip 2) {
+            $columns = @($line -split '\|')
+            Assert-Equal $columns.Count 3
+            Assert-Equal $line.IndexOf('|') 11
+            Assert-Equal $line.LastIndexOf('|') 25
+            Assert-True (-not [string]::IsNullOrWhiteSpace($columns[2])) 'missing tool description'
+        }
+        Assert-Contains $result.Text 'Fast text search; grep alternative (rg)'
+        Assert-True ($result.Text -notmatch '\x1b\[') 'captured tool table contains ANSI styling'
     }
 
     Invoke-UpwshTest 'tool list reports a command on PATH' {
