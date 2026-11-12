@@ -425,7 +425,9 @@ function global:cp {
             } else {
                 $arguments += @($item.Name, '/LEV:1')
             }
-            $arguments += @('/COPY:DAT', '/IS', '/IT', '/R:1', '/W:1', '/NFL', '/NDL', '/NP', '/NJH', '/NJS')
+            # Same, Tweaked and Modified are distinct Robocopy file classes.
+            # /IM includes matching size/mtime files with a different NTFS change time.
+            $arguments += @('/COPY:DAT', '/IS', '/IT', '/IM', '/R:1', '/W:1', '/NFL', '/NDL', '/NP', '/NJH', '/NJS')
             try {
                 & $robocopy @arguments | Out-Null
                 $robocopyCode = $LASTEXITCODE

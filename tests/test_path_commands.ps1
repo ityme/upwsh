@@ -198,9 +198,12 @@ Test-Case 'cp recursive copy replaces files with unchanged timestamps and size' 
         [IO.Directory]::CreateDirectory((Join-Path $destination 'source')) | Out-Null
         $destinationFile = Join-Path $destination 'source\value.txt'
         [IO.File]::WriteAllText($sourceFile, 'new')
-        [IO.File]::WriteAllText($destinationFile, 'old')
         $timestamp = [datetime]'2020-01-02T03:04:05'
         [IO.File]::SetLastWriteTime($sourceFile, $timestamp)
+        # NTFS change time differs even though length and LastWriteTime match.
+        # Separate the writes beyond Robocopy's timestamp comparison granularity.
+        Start-Sleep -Milliseconds 1100
+        [IO.File]::WriteAllText($destinationFile, 'old')
         [IO.File]::SetLastWriteTime($destinationFile, $timestamp)
 
         cp -r $source $destination
