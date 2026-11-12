@@ -290,6 +290,84 @@ Test-Case 'external adapters and rm receive converted paths without converting p
     }
 }
 
+Test-Case 'cp rejects junction parents and source or target tree links before writing' {
+    $root = Join-Path $HOME 'copy links'
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $links = [Collections.Generic.List[string]]::new()
+    try {
+        $source = Join-Path $root source
+        $other = Join-Path $root other
+        $destination = Join-Path $root destination
+        foreach ($path in @($source,$other,$destination)) { [IO.Directory]::CreateDirectory($path) | Out-Null }
+        [IO.File]::WriteAllText((Join-Path $source 'x.txt'), 'source')
+        [IO.File]::WriteAllText((Join-Path $other 'x.txt'), 'keep')
+        $alias = Join-Path $root alias
+        New-Item -ItemType Junction -Path $alias -Target $source | Out-Null
+        $links.Add($alias)
+        foreach ($pair in @(@($source,(Join-Path $alias backup)),@($alias,(Join-Path $root fresh)))) {
+            $message = ''
+            try { cp -rf $pair[0] $pair[1] } catch { $message = $_.Exception.Message }
+            if ($message -notmatch 'reparse point') { throw "missing link rejection: $message" }
+            Assert-Equal $LASTEXITCODE 1
+        }
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $source backup)) $false
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $root fresh)) $false
+        $cycle = Join-Path $source loop
+        New-Item -ItemType Junction -Path $cycle -Target $source | Out-Null
+        $links.Add($cycle)
+        $message = ''
+        try { cp -rf $source $destination } catch { $message = $_.Exception.Message }
+        if ($message -notmatch 'reparse point') { throw "cycle was not rejected: $message" }
+        [IO.Directory]::Delete($cycle); $links.Remove($cycle) | Out-Null
+        $redirect = Join-Path $destination source
+        New-Item -ItemType Junction -Path $redirect -Target $other | Out-Null
+        $links.Add($redirect)
+        $message = ''
+        try { cp -rf $source $destination } catch { $message = $_.Exception.Message }
+        if ($message -notmatch 'reparse point') { throw "destination link was not rejected: $message" }
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $other 'x.txt'))) 'keep'
+    } finally {
+        foreach ($link in $links) { [IO.Directory]::Delete($link) }
+        Remove-Item -LiteralPath $root -Recurse -Force
+    }
+}
+Test-Case 'copy preflight rejects dangling symbolic links without following them' {
+    $root = Join-Path $HOME 'copy symlinks'
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $link = Join-Path $root link.txt
+    try {
+        New-Item -ItemType SymbolicLink -Path $link -Target (Join-Path $root missing.txt) -ErrorAction Stop | Out-Null
+        $message = ''
+        try { Assert-CopyPathWithoutLinks $link } catch { $message = $_.Exception.Message }
+        if ($message -notmatch 'reparse point') { throw "dangling symbolic link not rejected: $message" }
+    } finally {
+        if ([IO.File]::Exists($link)) { [IO.File]::Delete($link) }
+        Remove-Item -LiteralPath $root -Recurse -Force
+    }
+}
+Test-Case 'cp -rf replaces readonly files and restores attributes on failed replacement' {
+    $root = Join-Path $HOME 'copy readonly'
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    try {
+        $source = Join-Path $root source.txt; $target = Join-Path $root target.txt
+        [IO.File]::WriteAllText($source, 'new'); [IO.File]::WriteAllText($target, 'old')
+        [IO.File]::SetAttributes($target, [IO.FileAttributes]::ReadOnly)
+        cp -rf $source $target
+        Assert-Equal ([IO.File]::ReadAllText($target)) 'new'
+        [IO.File]::WriteAllText($target, 'old')
+        [IO.File]::SetAttributes($target, [IO.FileAttributes]::ReadOnly)
+        $lock = [IO.File]::Open($target, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+        try {
+            $failed = $false
+            try { cp -rf $source $target } catch { $failed = $true }
+            Assert-Equal $failed $true
+            Assert-Equal ([IO.File]::ReadAllText($target)) 'old'
+            Assert-Equal ([bool]([IO.File]::GetAttributes($target) -band [IO.FileAttributes]::ReadOnly)) $true
+        } finally { $lock.Dispose() }
+        Assert-Equal (@(Get-ChildItem -LiteralPath $root -Force -Filter '.upwsh-copy-*')).Count 0
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force }
+}
+
 $cases = @(
     ,@('drive argument', 'capture /c/work', 'capture C:/work')
     ,@('unknown command needs no adapter', 'unknown-command /d/work', 'unknown-command D:/work')

@@ -173,6 +173,35 @@ function Resolve-WindowsPath {
     return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($windowsPath)
 }
 
+# Fail closed for copy operations: never traverse a reparse point, including
+# one in a parent directory or a dangling link. Does not create missing paths.
+function Assert-CopyPathWithoutLinks {
+    param([string]$Path, [switch]$Recurse)
+
+    $fullPath = Resolve-WindowsPath $Path
+    $current = $fullPath
+    while ($current) {
+        try { $attributes = [IO.File]::GetAttributes($current) }
+        catch [IO.FileNotFoundException] { $attributes = $null }
+        catch [IO.DirectoryNotFoundException] { $attributes = $null }
+        if ($null -ne $attributes -and ($attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "cp: refusing junction, symbolic link, or other reparse point: '$current'."
+        }
+        $current = [IO.Path]::GetDirectoryName($current.TrimEnd('\', '/'))
+    }
+    if (-not $Recurse -or -not [IO.Directory]::Exists($fullPath)) { return }
+    $pending = [Collections.Generic.Stack[string]]::new()
+    $pending.Push($fullPath)
+    while ($pending.Count) {
+        foreach ($entry in ([IO.DirectoryInfo]::new($pending.Pop())).EnumerateFileSystemInfos()) {
+            if ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                throw "cp: refusing junction, symbolic link, or other reparse point: '$($entry.FullName)'."
+            }
+            if ($entry.Attributes -band [IO.FileAttributes]::Directory) { $pending.Push($entry.FullName) }
+        }
+    }
+}
+
 function ConvertFrom-QuotedText {
     param([string]$Text)
     if ($Text -match '^\(winpath (''(?:[^'']|'''')*'')\)$') {
@@ -666,5 +695,6 @@ Export-ModuleMember -Function @(
     'Get-UnixPathCompletion'
     'Invoke-PathCompletionHook'
     'Resolve-WindowsPath'
+    'Assert-CopyPathWithoutLinks'
     'Test-PathLikeToken'
 )

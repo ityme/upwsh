@@ -350,6 +350,9 @@ function global:cp {
         $sources = @(ConvertTo-WindowsPathOperands $operands[0..($operands.Count - 2)] -Absolute)
         $destination = ConvertTo-WindowsPathOperands @($operands[-1]) -Literal -Absolute
         $copyOptions = $parsed.Options
+        # Preflight the complete operation before creating targets or changing attributes.
+        foreach ($source in $sources) { Assert-CopyPathWithoutLinks $source -Recurse }
+        Assert-CopyPathWithoutLinks $destination -Recurse
         $sourceItems = @(
             foreach ($source in $sources) {
                 Get-Item -LiteralPath $source -Force -ErrorAction Stop
@@ -426,7 +429,7 @@ function global:cp {
             }
             # Same, Tweaked and Modified are distinct Robocopy file classes.
             # /IM includes matching size/mtime files with a different NTFS change time.
-            $arguments += @('/COPY:DAT', '/IS', '/IT', '/IM', '/R:1', '/W:1', '/NFL', '/NDL', '/NP', '/NJH', '/NJS')
+            $arguments += @('/COPY:DAT', '/IS', '/IT', '/IM', '/XJ', '/R:1', '/W:1', '/NFL', '/NDL', '/NP', '/NJH', '/NJS')
             try {
                 & $robocopy @arguments | Out-Null
                 $robocopyCode = $LASTEXITCODE
@@ -435,7 +438,23 @@ function global:cp {
                 }
                 if ($singleFileRename) {
                     $copiedPath = Join-Path $writeRoot $item.Name
-                    [IO.File]::Move($copiedPath, $destination, $copyOptions.Contains('f'))
+                    # Recheck after the copy, before touching the existing target.
+                    Assert-CopyPathWithoutLinks $destination
+                    $originalAttributes = $null
+                    if ($copyOptions.Contains('f') -and [IO.File]::Exists($destination)) {
+                        $originalAttributes = [IO.File]::GetAttributes($destination)
+                        if ($originalAttributes -band [IO.FileAttributes]::ReadOnly) {
+                            [IO.File]::SetAttributes($destination, $originalAttributes -band (-bnot [IO.FileAttributes]::ReadOnly))
+                        }
+                    }
+                    try {
+                        [IO.File]::Move($copiedPath, $destination, $copyOptions.Contains('f'))
+                    } catch {
+                        if ($null -ne $originalAttributes -and [IO.File]::Exists($destination)) {
+                            [IO.File]::SetAttributes($destination, $originalAttributes)
+                        }
+                        throw
+                    }
                 }
             } finally {
                 if ($staging -and [IO.Directory]::Exists($staging)) {
