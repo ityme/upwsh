@@ -186,6 +186,13 @@ try {
         try { Assert-Candidate ("git -C " + (ConvertTo-TestLiteral $fixture) + ' switch fe') 'feature/one' }
         finally { Pop-Location }
     }
+    Test-GitCase 'git -C converts quoted drive paths and preserves repeated relative directories' {
+        Push-Location $HOME
+        try {
+            Assert-Candidate ('git -C ' + (ConvertTo-TestLiteral (unixpath $fixture)) + ' switch fe') 'feature/one'
+            Assert-Candidate ('git -C ' + (ConvertTo-TestLiteral (unixpath $HOME)) + ' -C ' + (ConvertTo-TestLiteral (Split-Path -Leaf $fixture)) + ' switch fe') 'feature/one'
+        } finally { Pop-Location }
+    }
     Test-GitCase 'active command and cursor replacement do not disturb surrounding text' {
         Assert-Candidate 'Write-Output ignored; git sw' 'switch'
         $line = 'git checkout fe; Write-Output untouched'

@@ -213,6 +213,83 @@ Test-Case 'cp recursive copy replaces files with unchanged timestamps and size' 
     }
 }
 
+Test-Case 'filesystem commands share quoted and variable drive-path conversion' {
+    $root = Join-Path $HOME '第二步 paths'
+    $original = (Get-Location).Path
+    try {
+        $unixRoot = unixpath $root
+        mkdir -p $unixRoot
+        cd $unixRoot
+        Assert-Equal (Get-Location).ProviderPath $root
+        touch -p "$unixRoot/source/中文.txt"
+        $file = Join-Path $root 'source/中文.txt'
+        [IO.File]::WriteAllText($file, "needle /i/tmp`nlast")
+        Assert-Equal (head -n 1 (unixpath $file)) 'needle /i/tmp'
+        Assert-Equal (tail -n 1 (unixpath $file)) 'last'
+        Assert-Equal (grep '/i/tmp' (unixpath $file)) 'needle /i/tmp'
+        Assert-Equal (@(find "$unixRoot/source" -Type f)).Count 1
+        cp (unixpath $file) "$unixRoot/copied.txt"
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $root copied.txt))) "needle /i/tmp`nlast"
+        mv "$unixRoot/copied.txt" "$unixRoot/moved.txt"
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $root moved.txt)) $true
+        mkcd "$unixRoot/new folder"
+        Assert-Equal (Get-Location).ProviderPath (Join-Path $root 'new folder')
+        cd -
+        Assert-Equal (Get-Location).ProviderPath $root
+        Assert-Equal (@('text /i/tmp' | grep '/i/tmp') -join '|') 'text /i/tmp'
+    } finally {
+        Set-Location -LiteralPath $original
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+Test-Case 'cp and mv expand only sources and reject wildcard destinations without touching matches' {
+    $root = Join-Path $HOME 'source target boundary'
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    try {
+        foreach ($name in @('source.txt', 'target-a.txt', 'target-b.txt')) {
+            [IO.File]::WriteAllText((Join-Path $root $name), $name)
+        }
+        foreach ($command in @('cp', 'mv')) {
+            $failed = $false
+            try { & $command (unixpath (Join-Path $root source.txt)) ((unixpath $root) + '/target-*.txt') } catch { $failed = $true }
+            Assert-Equal $failed $true
+            foreach ($name in @('source.txt', 'target-a.txt', 'target-b.txt')) {
+                Assert-Equal ([IO.File]::ReadAllText((Join-Path $root $name))) $name
+            }
+        }
+        $destination = Join-Path $root 'out [literal]'
+        mkdir (unixpath $destination)
+        cp ((unixpath $root) + '/target-*.txt') (unixpath $destination)
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $destination target-a.txt)) $true
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $destination target-b.txt)) $true
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force }
+}
+Test-Case 'mixed arguments preserve ambiguous option values and convert explicit path operands' {
+    $values = @(ConvertTo-WindowsMixedPathArguments @('/i/folder', '--ignore-glob', '/i/*', '--', '/i/中文 folder'))
+    Assert-Equal ($values -join '|') 'I:/folder|--ignore-glob|/i/*|--|I:/中文 folder'
+    Assert-Equal ((ConvertTo-WindowsMixedPathArguments @('--time-style=+%Y', '--sort', 'name', '--', '/i/folder')) -join '|') '--time-style=+%Y|--sort|name|--|I:/folder'
+}
+Test-Case 'external adapters and rm receive converted paths without converting patterns' {
+    $fs = Get-Module fs
+    & $fs {
+        function eza { $args -join '|' }
+        $value = Invoke-Eza -Options @('--tree') -Arguments @('--ignore-glob', '/i/*', '--', '/i/中文 folder')
+        if ($value -cne '--time-style=+%Y-%m-%d %H:%M:%S|--tree|--ignore-glob|/i/*|--|I:/中文 folder') { throw $value }
+        # Intercept lookup before any recycle operation; do not touch actual files.
+        function Get-Item { param($LiteralPath, [switch]$Force, $ErrorAction) throw "LOOKUP:$LiteralPath" }
+        try { rm '/i/中文 folder' } catch {
+            if ($_.Exception.Message -cne 'LOOKUP:I:/中文 folder') { throw }
+            return
+        }
+        throw 'rm lookup was not intercepted'
+    }
+    & (Get-Module tool) {
+        function dust { $args -join '|' }
+        $value = du -sh '/i/中文 folder'
+        if ($value -cne '--depth|0|I:/中文 folder') { throw $value }
+    }
+}
+
 $cases = @(
     ,@('drive argument', 'capture /c/work', 'capture C:/work')
     ,@('unknown command needs no adapter', 'unknown-command /d/work', 'unknown-command D:/work')

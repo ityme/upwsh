@@ -154,8 +154,8 @@ function Get-GitCompletion {
     $index = 0
     while ($index -lt $words.Count -and $words[$index] -ceq '-C') {
         if ($index + 1 -ge $words.Count) { return $null }
-        $directory = $words[$index + 1]
-        if ($elements[$index + 1].StringConstantType -eq 'BareWord') { $directory = winpath $directory }
+        # Keep relative -C values relative: Git resolves repeated -C options in order.
+        $directory = ConvertTo-WindowsPathOperands @($words[$index + 1]) -Literal
         $directoryArgs += @('-C', $directory)
         $index += 2
     }

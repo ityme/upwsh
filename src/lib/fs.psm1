@@ -22,7 +22,7 @@ function global:cd {
 
     $current = (Get-Location).Path
     try {
-        Set-Location -LiteralPath $target -ErrorAction Stop
+        Set-Location -LiteralPath (Resolve-WindowsPath $target) -ErrorAction Stop
         $script:PreviousDirectory = $current
     } catch {
         Write-Error $_
@@ -36,7 +36,7 @@ function Invoke-Eza {
         [object[]]$Arguments
     )
 
-    $windowsArguments = @(ConvertTo-WindowsPathOperands $Arguments)
+    $windowsArguments = @(ConvertTo-WindowsMixedPathArguments $Arguments)
     & eza '--time-style=+%Y-%m-%d %H:%M:%S' @Options @windowsArguments
 }
 
@@ -98,7 +98,7 @@ function global:mkcd {
 
     $target = $Path
     [IO.Directory]::CreateDirectory((Resolve-WindowsPath $target)) | Out-Null
-    cd $target
+    & (Get-Command cd -CommandType Function -ErrorAction Stop) $target
 }
 
 # 用途：递归查找文件或目录，支持 -name 和 -type f/d。
@@ -339,17 +339,16 @@ function global:cp {
         return
     }
 
-    $paths = @(ConvertTo-WindowsPathOperands $parsed.Operands)
-
-    if ($paths.Count -lt 2) {
+    $operands = @($parsed.Operands | ForEach-Object { $_ })
+    if ($operands.Count -lt 2) {
         $global:LASTEXITCODE = 2
-        Write-Error 'Usage: cp [-r] SOURCE DEST'
+        Write-Error 'Usage: cp [-rf] SOURCE... DEST'
         return
     }
 
     try {
-        $sources = @($paths[0..($paths.Count - 2)])
-        $destination = $paths[-1]
+        $sources = @(ConvertTo-WindowsPathOperands $operands[0..($operands.Count - 2)] -Absolute)
+        $destination = ConvertTo-WindowsPathOperands @($operands[-1]) -Literal -Absolute
         $copyOptions = $parsed.Options
         $sourceItems = @(
             foreach ($source in $sources) {
@@ -462,16 +461,17 @@ function global:mv {
         return
     }
 
-    $paths = @(ConvertTo-WindowsPathOperands $parsed.Operands)
-
-    if ($paths.Count -lt 2) {
+    $operands = @($parsed.Operands | ForEach-Object { $_ })
+    if ($operands.Count -lt 2) {
         $global:LASTEXITCODE = 2
-        Write-Error 'Usage: mv SOURCE DEST'
+        Write-Error 'Usage: mv [-f] SOURCE... DEST'
         return
     }
 
     try {
-        Move-Item -LiteralPath $paths[0..($paths.Count - 2)] -Destination $paths[-1] -Force:$parsed.Options.Contains('f') -ErrorAction Stop
+        $sources = @(ConvertTo-WindowsPathOperands $operands[0..($operands.Count - 2)] -Absolute)
+        $destination = ConvertTo-WindowsPathOperands @($operands[-1]) -Literal -Absolute
+        Move-Item -LiteralPath $sources -Destination $destination -Force:$parsed.Options.Contains('f') -ErrorAction Stop
         $global:LASTEXITCODE = 0
     } catch {
         $global:LASTEXITCODE = 1

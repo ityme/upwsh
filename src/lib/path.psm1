@@ -75,6 +75,29 @@ function ConvertTo-WindowsPathOperands {
     }
 }
 
+# Mixed native arguments: after an option, values are opaque until an explicit --.
+# This avoids maintaining command-specific option grammars in the path layer.
+function ConvertTo-WindowsMixedPathArguments {
+    param([object[]]$Arguments)
+
+    $pathsOnly = $false
+    $ambiguous = $false
+    foreach ($argument in @($Arguments)) {
+        if ($null -eq $argument) { continue }
+        if (-not $pathsOnly -and $argument -is [string]) {
+            if ($argument -eq '--') {
+                $pathsOnly = $true
+                $argument
+                continue
+            }
+            if ($argument.StartsWith('-') -and $argument -ne '-') { $ambiguous = $true }
+        }
+        if ($pathsOnly -or -not $ambiguous) {
+            ConvertTo-WindowsPathOperands @($argument)
+        } else { $argument }
+    }
+}
+
 function ConvertTo-WindowsCommandLine {
     param([AllowEmptyString()][string]$InputScript = '')
 
@@ -633,6 +656,7 @@ Export-ModuleMember -Function @(
     'ConvertTo-WindowsArguments'
     'ConvertTo-WindowsCommandLine'
     'ConvertTo-WindowsPathOperands'
+    'ConvertTo-WindowsMixedPathArguments'
     'ConvertFrom-QuotedText'
     'ConvertTo-QuotedText'
     'ConvertTo-PathCompletionText'

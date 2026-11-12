@@ -49,6 +49,10 @@ Git completion tests create and remove isolated local repositories with fixture 
 
 Known filesystem operands use `ConvertTo-WindowsPathOperands`: it applies `winpath` before glob expansion, skips null operands, and preserves relative output by default. Use `-Literal` for destinations or paths that must not expand wildcards, and `-Absolute` when an absolute path is required. `Resolve-WindowsPath` converts then resolves against PowerShell's current location, without requiring the target to exist; resolution errors propagate instead of returning an unprocessed path. These interfaces accept path values, not shell-quoted source text or arbitrary option/search values. Interactive rewriting still leaves quoted strings untouched; external commands can use explicit `winpath` expressions.
 
+Command adapters identify path roles before invoking the shared helpers: `cp`/`mv` split the final destination before expanding sources, and resolve destinations with `-Literal -Absolute`. `cd`/`mkcd` use the shared resolver; Git completion converts each `-C` value literally while preserving relative values for repeated `-C` semantics. Read commands and `du` pass only their parsed path operands, never search expressions.
+
+For mixed external arguments, `ConvertTo-WindowsMixedPathArguments` avoids command-specific option tables: operands before options are converted; after an option, ambiguous values remain unchanged until `--`. The eza adapter uses this rule for user arguments. Use `ls --ignore-glob '/i/*' -- '/i/my folder'` to preserve the pattern and convert the path, or pass `(winpath '...')` explicitly. Fixed adapter options are forwarded unchanged. Quoted strings for arbitrary external commands are still not globally rewritten. This stage does not add junction/symlink-aware copy guards.
+
 Standalone installers contain generated copies so `irm | iex` works before installation. After editing the converter, synchronize and check those copies:
 
 ```powershell
