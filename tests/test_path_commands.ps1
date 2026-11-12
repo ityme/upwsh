@@ -219,6 +219,39 @@ Test-Case 'cp refuses self and descendant destinations before creating files' {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
+Test-Case 'cp copies content rather than only metadata for Robocopy Tweaked files' {
+    $root = Join-Path $HOME 'copy tweaked'
+    try {
+        $source = Join-Path $root source
+        $destination = Join-Path $root 'out/source'
+        [IO.Directory]::CreateDirectory($source) | Out-Null
+        [IO.Directory]::CreateDirectory($destination) | Out-Null
+        $sourceFile = Join-Path $source 'value.txt'
+        $targetFile = Join-Path $destination 'value.txt'
+        [IO.File]::WriteAllText($sourceFile, 'new')
+        [IO.File]::WriteAllText($targetFile, 'old')
+        $stamp = [datetime]::SpecifyKind([datetime]'2020-01-02T03:04:05', [DateTimeKind]::Utc)
+        [IO.File]::SetLastWriteTimeUtc($sourceFile, $stamp)
+        [IO.File]::SetLastWriteTimeUtc($targetFile, $stamp)
+        [IO.File]::SetAttributes($sourceFile, [IO.FileAttributes]::Archive)
+        [IO.File]::SetAttributes($targetFile, [IO.FileAttributes]::Normal)
+        cp -r $source (Join-Path $root out)
+        Assert-Equal ([IO.File]::ReadAllText($targetFile)) 'new'
+        Assert-Equal ([IO.File]::GetLastWriteTimeUtc($targetFile)) $stamp
+
+        [IO.File]::WriteAllText($targetFile, 'old')
+        [IO.File]::SetLastWriteTimeUtc($targetFile, $stamp)
+        [IO.File]::SetAttributes($targetFile, [IO.FileAttributes]::Normal)
+        $lock = [IO.File]::Open($targetFile, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        try {
+            $failed = $false
+            try { cp -r $source (Join-Path $root out) } catch { $failed = $true }
+            Assert-Equal $failed $true
+            Assert-Equal ([IO.File]::GetLastWriteTimeUtc($targetFile)) $stamp
+            Assert-Equal ([IO.File]::GetAttributes($targetFile)) ([IO.FileAttributes]::Normal)
+        } finally { $lock.Dispose() }
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
 Test-Case 'cp recursive copy replaces files with unchanged timestamps and size' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-cp-force-' + [guid]::NewGuid().ToString('N'))
     try {

@@ -140,8 +140,9 @@ function Invoke-UpwshCopy {
         # /IM includes matching size/mtime files with a different NTFS change time.
         $arguments += @('/COPY:DAT', '/IS', '/IT', '/IM', '/XJ', '/R:1', '/W:1', '/NFL', '/NDL', '/NP', '/NJH', '/NJS')
         $clearedAttributes = [Collections.Generic.Dictionary[string, IO.FileAttributes]]::new([StringComparer]::OrdinalIgnoreCase)
+        $adjustedTimes = [Collections.Generic.Dictionary[string, datetime]]::new([StringComparer]::OrdinalIgnoreCase)
         try {
-            if ($Force -and -not $singleFileRename) {
+            if (-not $singleFileRename) {
                 $files = if ($item -is [IO.DirectoryInfo]) {
                     $item.EnumerateFiles('*', [IO.SearchOption]::AllDirectories)
                 } else { @($item) }
@@ -151,10 +152,24 @@ function Invoke-UpwshCopy {
                     } else { Join-Path $writeRoot $file.Name }
                     if ([IO.File]::Exists($fileTarget)) {
                         $attributes = [IO.File]::GetAttributes($fileTarget)
-                        if ($attributes -band [IO.FileAttributes]::ReadOnly) {
+                        if ($Force -and ($attributes -band [IO.FileAttributes]::ReadOnly)) {
                             Assert-CopyPathWithoutLinks $fileTarget
                             $clearedAttributes[$fileTarget] = $attributes
                             [IO.File]::SetAttributes($fileTarget, $attributes -band (-bnot [IO.FileAttributes]::ReadOnly))
+                        }
+                        $targetFile = [IO.FileInfo]::new($fileTarget)
+                        if ($targetFile.Length -eq $file.Length -and
+                            $targetFile.LastWriteTimeUtc -eq $file.LastWriteTimeUtc -and
+                            $targetFile.Attributes -ne $file.Attributes) {
+                            # Robocopy's Tweaked class may copy attributes only, even with /IT.
+                            # Select a real content copy; Robocopy restores source metadata.
+                            Assert-CopyPathWithoutLinks $fileTarget
+                            $adjustedTimes[$fileTarget] = $targetFile.LastWriteTimeUtc
+                            if (-not $clearedAttributes.ContainsKey($fileTarget)) {
+                                $clearedAttributes[$fileTarget] = $attributes
+                            }
+                            $offset = if ($file.LastWriteTimeUtc.Year -gt 1601) { -2 } else { 2 }
+                            [IO.File]::SetLastWriteTimeUtc($fileTarget, $file.LastWriteTimeUtc.AddSeconds($offset))
                         }
                     }
                 }
@@ -185,6 +200,9 @@ function Invoke-UpwshCopy {
                 }
             }
         } catch {
+            foreach ($path in $adjustedTimes.Keys) {
+                if ([IO.File]::Exists($path)) { [IO.File]::SetLastWriteTimeUtc($path, $adjustedTimes[$path]) }
+            }
             foreach ($path in $clearedAttributes.Keys) {
                 if ([IO.File]::Exists($path)) { [IO.File]::SetAttributes($path, $clearedAttributes[$path]) }
             }
