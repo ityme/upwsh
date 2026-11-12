@@ -80,6 +80,112 @@ Test-Case 'explicit conversion does not replace fragments or expand wildcards' {
     Assert-Equal (unixpath 'relative\a') 'relative/a'
     Assert-Equal (unixpath '/c/a') '/c/a'
 }
+Test-Case 'cp file copy, rename, and multiple sources use robocopy semantics' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-cp-files-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $source = Join-Path $root 'source dir'
+        [IO.Directory]::CreateDirectory($source) | Out-Null
+        $first = Join-Path $source 'first file.txt'
+        $second = Join-Path $source 'second.txt'
+        [IO.File]::WriteAllText($first, 'first')
+        [IO.File]::WriteAllText($second, 'second')
+
+        $renamed = Join-Path $root 'renamed.data'
+        cp $first $renamed
+        Assert-Equal ([IO.File]::ReadAllText($renamed)) 'first'
+
+        $multiple = Join-Path $root 'multiple'
+        cp $first,$second $multiple
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multiple 'first file.txt'))) 'first'
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multiple 'second.txt'))) 'second'
+
+        [IO.File]::WriteAllText($renamed, 'old')
+        $failed = $false
+        try { cp $first $renamed } catch { $failed = $true }
+        Assert-Equal $failed $true
+        cp -f $first $renamed
+        Assert-Equal ([IO.File]::ReadAllText($renamed)) 'first'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+Test-Case 'cp -rf overwrites renamed files and existing directories repeatedly' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-cp-rf-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $source = Join-Path $root 'source'
+        $destination = Join-Path $root 'destination'
+        [IO.Directory]::CreateDirectory($source) | Out-Null
+        [IO.Directory]::CreateDirectory($destination) | Out-Null
+        $file = Join-Path $source 'a.txt'
+        $renamed = Join-Path $destination 'b.txt'
+        $unrelated = Join-Path $destination 'a.txt'
+        [IO.File]::WriteAllText($file, 'new')
+        [IO.File]::WriteAllText($renamed, 'old')
+        [IO.File]::WriteAllText($unrelated, 'keep')
+        cp -rf $file $renamed
+        Assert-Equal $LASTEXITCODE 0
+        Assert-Equal ([IO.File]::ReadAllText($renamed)) 'new'
+        Assert-Equal ([IO.File]::ReadAllText($unrelated)) 'keep'
+        cp -r -f $file $renamed
+        Assert-Equal $LASTEXITCODE 0
+        Assert-Equal ([IO.File]::ReadAllText($file)) 'new'
+        cp -rf $source $destination
+        cp -rf $source $destination
+        Assert-Equal $LASTEXITCODE 0
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'a.txt'))) 'new'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+Test-Case 'cp recursive directory copy preserves destination layout and never mirrors deletes' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-cp-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $source = Join-Path $root 'source'
+        $sourceChild = Join-Path $source 'nested'
+        $destination = Join-Path $root 'destination'
+        [IO.Directory]::CreateDirectory($sourceChild) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $sourceChild 'source.txt'), 'source')
+
+        cp -r $source $destination
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'nested\source.txt'))) 'source'
+
+        [IO.File]::WriteAllText((Join-Path $destination 'keep.txt'), 'keep')
+        cp -r $source $destination
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'nested\source.txt'))) 'source'
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'keep.txt'))) 'keep'
+
+        $secondSource = Join-Path $root 'second'
+        [IO.Directory]::CreateDirectory($secondSource) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $secondSource 'second.txt'), 'second')
+        $multipleDestination = Join-Path $root 'multiple'
+        cp -r $source,$secondSource $multipleDestination
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multipleDestination 'nested\source.txt'))) 'source'
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $multipleDestination 'second.txt'))) 'second'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+Test-Case 'cp recursive copy replaces files with unchanged timestamps and size' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('upwsh-cp-force-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $source = Join-Path $root 'source'
+        $destination = Join-Path $root 'destination'
+        [IO.Directory]::CreateDirectory($source) | Out-Null
+        [IO.Directory]::CreateDirectory($destination) | Out-Null
+        $sourceFile = Join-Path $source 'value.txt'
+        $destinationFile = Join-Path $destination 'value.txt'
+        [IO.File]::WriteAllText($sourceFile, 'new')
+        [IO.File]::WriteAllText($destinationFile, 'old')
+        $timestamp = [datetime]'2020-01-02T03:04:05'
+        [IO.File]::SetLastWriteTime($sourceFile, $timestamp)
+        [IO.File]::SetLastWriteTime($destinationFile, $timestamp)
+
+        cp -r $source $destination
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'value.txt'))) 'new'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 
 $cases = @(
     ,@('drive argument', 'capture /c/work', 'capture C:/work')

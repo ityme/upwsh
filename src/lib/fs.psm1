@@ -348,7 +348,81 @@ function global:cp {
     }
 
     try {
-        Copy-Item -LiteralPath $paths[0..($paths.Count - 2)] -Destination $paths[-1] -Recurse:$parsed.Options.Contains('r') -Force:$parsed.Options.Contains('f') -ErrorAction Stop
+        $sources = @($paths[0..($paths.Count - 2)])
+        $destination = $paths[-1]
+        $copyOptions = $parsed.Options
+        $sourceItems = @(
+            foreach ($source in $sources) {
+                Get-Item -LiteralPath $source -Force -ErrorAction Stop
+            }
+        )
+        $directories = @($sourceItems | Where-Object { $_ -is [IO.DirectoryInfo] })
+        if ($directories.Count -gt 0 -and -not $copyOptions.Contains('r')) {
+            throw 'cp: source is a directory; use -r.'
+        }
+
+        $robocopy = Join-Path $env:WINDIR 'System32\robocopy.exe'
+        if (-not (Test-Path -LiteralPath $robocopy -PathType Leaf)) {
+            throw 'robocopy.exe was not found in the Windows system directory.'
+        }
+        $destinationExists = Test-Path -LiteralPath $destination -PathType Container
+        $singleFileRename = $sourceItems.Count -eq 1 -and
+            $sourceItems[0] -is [IO.FileInfo] -and
+            -not $destinationExists
+        $destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($destination)
+        $destinationDirectory = $destinationExists -or $directories.Count -gt 0 -or
+            $sourceItems.Count -gt 1
+        $copyRoot = if ($destinationDirectory) {
+            $destination
+        } else {
+            [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($destination))
+        }
+        if ([string]::IsNullOrWhiteSpace($copyRoot)) { $copyRoot = (Get-Location).ProviderPath }
+        [IO.Directory]::CreateDirectory($copyRoot) | Out-Null
+        if ($singleFileRename -and $sourceItems[0].FullName.Equals($destination, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'cp: source and destination are the same file.'
+        }
+        if ($singleFileRename -and (Test-Path -LiteralPath $destination) -and -not $copyOptions.Contains('f')) {
+            throw "cp: destination already exists: '$destination'."
+        }
+        if ($destinationDirectory -and -not $destinationExists) {
+            [IO.Directory]::CreateDirectory($destination) | Out-Null
+        }
+
+        foreach ($item in $sourceItems) {
+            $sourceRoot = if ($item -is [IO.DirectoryInfo]) {
+                $item.FullName
+            } else {
+                $item.DirectoryName
+            }
+            # Stage renamed files so a same-named sibling at the destination stays intact.
+            $staging = if ($singleFileRename) {
+                Join-Path $copyRoot ('.upwsh-copy-' + [guid]::NewGuid().ToString('N'))
+            } else { $null }
+            $writeRoot = if ($staging) { $staging } else { $copyRoot }
+            $arguments = @($sourceRoot, $writeRoot)
+            if ($item -is [IO.DirectoryInfo]) {
+                $arguments += @('/E', '/DCOPY:DAT')
+            } else {
+                $arguments += @($item.Name, '/LEV:1')
+            }
+            $arguments += @('/COPY:DAT', '/IS', '/IT', '/R:1', '/W:1', '/NFL', '/NDL', '/NP', '/NJH', '/NJS')
+            try {
+                & $robocopy @arguments | Out-Null
+                $robocopyCode = $LASTEXITCODE
+                if ($robocopyCode -ge 8) {
+                    throw "robocopy failed with exit code $robocopyCode while copying '$($item.FullName)'."
+                }
+                if ($singleFileRename) {
+                    $copiedPath = Join-Path $writeRoot $item.Name
+                    [IO.File]::Move($copiedPath, $destination, $copyOptions.Contains('f'))
+                }
+            } finally {
+                if ($staging -and [IO.Directory]::Exists($staging)) {
+                    [IO.Directory]::Delete($staging, $true)
+                }
+            }
+        }
         $global:LASTEXITCODE = 0
     } catch {
         $global:LASTEXITCODE = 1
