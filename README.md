@@ -104,7 +104,7 @@ Changes made in another window, such as switching a branch in the same working t
 | `upwsh install` | Install or repair files, Path, and the `upwsh` command, then load |
 | `upwsh update` | Update an existing installation, keeping tools, `user-settings.ps1`, extra theme JSON, and the profile hook |
 | `upwsh load` | Enable startup loading of `~/.config/upwsh/profile.ps1` and load this pwsh |
-| `upwsh unload` | Disable startup loading and drop the current-session prompt |
+| `upwsh unload` | Disable startup loading and restore commands, shortcuts, prompt, and managed key bindings in this session |
 | `upwsh uninstall` | Unload, then remove the installation; keep a changed `user-settings.ps1`, delete themes |
 | `upwsh edit` | Open `~/.config/upwsh/user-settings.ps1` in nvim, vim, or Windows Notepad, then reload this pwsh |
 

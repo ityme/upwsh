@@ -4,6 +4,9 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     return
 }
 
+# Do not force-reload the tracker: it must retain the pre-upwsh definitions.
+Import-Module (Join-Path $PSScriptRoot 'lib/session.psm1') -Global -DisableNameChecking
+Start-UpwshSessionTracking
 function Import-ShellModule {
     param([Parameter(Mandatory)][string]$Name)
 
@@ -54,3 +57,4 @@ if (Test-Path -LiteralPath $script:UserSettings -PathType Leaf) {
 }
 
 Import-ShellModule 'hook.psm1'
+Complete-UpwshSessionTracking

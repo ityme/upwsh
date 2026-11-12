@@ -403,7 +403,10 @@ if ($parsed.Check) {
 }
 
 $savedProfile = $env:UPWSH_PROFILE
+$savedSessionLoad = $env:UPWSH_SKIP_SESSION_LOAD
 try {
+    # Finish disk/environment work before removing helpers used by this script.
+    $env:UPWSH_SKIP_SESSION_LOAD = '1'
     $env:UPWSH_PROFILE = $hookPath
     $env:UPWSH_HOME = $directory
     $loader = Join-Path $directory 'script\upwsh.ps1'
@@ -415,18 +418,11 @@ try {
     Remove-UninstallEnvironment -InstallHome $directory
 } finally {
     $env:UPWSH_PROFILE = $savedProfile
+    $env:UPWSH_SKIP_SESSION_LOAD = $savedSessionLoad
 }
 
 if (Test-ProfileHook $hookPath) {
     Remove-ProfileHookFallback -Path $hookPath
-}
-
-if (-not $env:UPWSH_SKIP_SESSION_LOAD) {
-    Remove-Item Function:global:PSConsoleHostReadLine -ErrorAction SilentlyContinue
-    Remove-Item Function:global:upwsh -ErrorAction SilentlyContinue
-    function global:prompt {
-        "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) "
-    }
 }
 
 if ($keepTree) {
@@ -456,4 +452,15 @@ if ($keepTree) {
     }
 }
 
+if (-not $env:UPWSH_SKIP_SESSION_LOAD) {
+    if (Get-Command Restore-UpwshSessionCommands -ErrorAction SilentlyContinue) {
+        Restore-UpwshSessionCommands
+    } else {
+        Remove-Item Function:PSConsoleHostReadLine -ErrorAction SilentlyContinue
+        Remove-Item Function:upwsh -ErrorAction SilentlyContinue
+        function global:prompt {
+            "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) "
+        }
+    }
+}
 Complete-Uninstall 0 $scriptInvocation

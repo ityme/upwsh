@@ -286,9 +286,14 @@ function ConvertFrom-UpwshArguments {
 }
 
 function Restore-UpwshDefaultPrompt {
-    Remove-Item Function:global:PSConsoleHostReadLine -ErrorAction SilentlyContinue
-    function global:prompt {
-        "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) "
+    param([switch]$Uninstall)
+    if (Get-Command Restore-UpwshSessionCommands -ErrorAction SilentlyContinue) {
+        Restore-UpwshSessionCommands -KeepEntry:(-not $Uninstall)
+    } else {
+        Remove-Item Function:global:PSConsoleHostReadLine -ErrorAction SilentlyContinue
+        function global:prompt {
+            "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) "
+        }
     }
 }
 
@@ -440,9 +445,7 @@ function Invoke-UpwshPostSetup {
     }
     if ($Command -eq 'uninstall') {
         Remove-UpwshUserEnvironment
-        Remove-Item Function:global:PSConsoleHostReadLine -ErrorAction SilentlyContinue
-        Remove-Item Function:global:upwsh -ErrorAction SilentlyContinue
-        Restore-UpwshDefaultPrompt
+        Restore-UpwshDefaultPrompt -Uninstall
     }
 }
 

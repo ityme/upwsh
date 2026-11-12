@@ -323,8 +323,8 @@ if ($Host.Name -eq 'ConsoleHost' -and (Get-Module PSReadLine)) {
         return $line
     }
 
-    Set-PSReadLineOption -CompletionQueryItems 60
-    Set-PSReadLineOption -AddToHistoryHandler {
+    Set-UpwshReadLineOption -Name CompletionQueryItems -Value 60
+    Set-UpwshReadLineOption -Name AddToHistoryHandler -Value {
         param($lineToBeAdded)
         if ($script:SkipConvertedHistory) {
             $script:SkipConvertedHistory = $false
@@ -332,12 +332,12 @@ if ($Host.Name -eq 'ConsoleHost' -and (Get-Module PSReadLine)) {
         }
         -not [string]::IsNullOrWhiteSpace($lineToBeAdded)
     }
-    Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
-    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
-    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
-    Set-PSReadLineOption -PredictionSource None
+    Set-UpwshReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
+    Set-UpwshReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+    Set-UpwshReadLineOption -Name HistorySearchCursorMovesToEnd -Value $true
+    Set-UpwshReadLineOption -Name PredictionSource -Value None
 
-    Set-PSReadLineKeyHandler -Key Tab -ScriptBlock {
+    Set-UpwshReadLineKeyHandler -Key Tab -ScriptBlock {
         $line = $null
         $cursor = 0
         [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$cursor)
@@ -349,7 +349,7 @@ if ($Host.Name -eq 'ConsoleHost' -and (Get-Module PSReadLine)) {
     }
 
     if (Get-Command fzf -ErrorAction SilentlyContinue) {
-        Set-PSReadLineKeyHandler -Chord Ctrl+r -ScriptBlock {
+        Set-UpwshReadLineKeyHandler -Chord Ctrl+r -ScriptBlock {
             $historyPath = (Get-PSReadLineOption).HistorySavePath
             $selection = Get-Content -LiteralPath $historyPath -ErrorAction SilentlyContinue |
                 fzf --tac --no-sort --height=40% --border
@@ -369,7 +369,7 @@ if ($Host.Name -eq 'ConsoleHost' -and (Get-Module PSReadLine)) {
             'ValidateAndAcceptLine'
             'HookAcceptLine'
         )) {
-        Set-PSReadLineKeyHandler `
+        Set-UpwshReadLineKeyHandler `
             -Chord Enter `
             -BriefDescription 'HookAcceptLine' `
             -LongDescription 'Path rewrite then accept line' `

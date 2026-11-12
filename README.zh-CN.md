@@ -104,7 +104,7 @@ Git 单词唯一匹配时，补全后自动加空格。每段都只有一个匹�
 | `upwsh install` | 安装或修复文件、Path 和 `upwsh` 命令，然后 load |
 | `upwsh update` | 更新已有安装，保留工具、`user-settings.ps1`、额外主题 JSON 和 profile 钩子 |
 | `upwsh load` | 启用启动时自动加载，并加载当前 pwsh |
-| `upwsh unload` | 停止自动加载，并恢复当前会话的默认提示符 |
+| `upwsh unload` | 停止自动加载，恢复当前会话的命令、快捷方式、提示符及受管按键绑定 |
 | `upwsh uninstall` | 先 unload，再删除安装；改过的 `user-settings.ps1` 留下，主题不留 |
 | `upwsh edit` | 依次用 nvim、vim 或 Windows 记事本打开 `~/.config/upwsh/user-settings.ps1`，关闭后重载当前 pwsh |
 
