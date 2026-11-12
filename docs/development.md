@@ -47,6 +47,8 @@ Git completion tests create and remove isolated local repositories with fixture 
 
 `src/lib/path_convert.ps1` defines `winpath` and `unixpath`. Interactive input, completion, command output, and setup share these interfaces. The Enter handler decides which arguments to convert; the converter functions only transform path text.
 
+Known filesystem operands use `ConvertTo-WindowsPathOperands`: it applies `winpath` before glob expansion, skips null operands, and preserves relative output by default. Use `-Literal` for destinations or paths that must not expand wildcards, and `-Absolute` when an absolute path is required. `Resolve-WindowsPath` converts then resolves against PowerShell's current location, without requiring the target to exist; resolution errors propagate instead of returning an unprocessed path. These interfaces accept path values, not shell-quoted source text or arbitrary option/search values. Interactive rewriting still leaves quoted strings untouched; external commands can use explicit `winpath` expressions.
+
 Standalone installers contain generated copies so `irm | iex` works before installation. After editing the converter, synchronize and check those copies:
 
 ```powershell

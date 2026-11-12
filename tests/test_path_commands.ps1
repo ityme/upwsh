@@ -265,9 +265,57 @@ Test-Case 'unsafe converted paths are quoted to prevent PowerShell interpretatio
     $line = ConvertTo-WindowsCommandLine 'capture /c/[draft].txt'
     Assert-Equal (Invoke-Expression $line) 'C:/[draft].txt'
 }
-Test-Case 'relative and quoted arguments remain untouched by filesystem operand helpers' {
-    Assert-Equal ((ConvertTo-WindowsPathOperands @('/c/no-such-test-item')) -join '|') '/c/no-such-test-item'
+Test-Case 'known path operands convert drive prefixes but not embedded text' {
+    Assert-Equal ((ConvertTo-WindowsPathOperands @('/c/no-such-test-item')) -join '|') 'C:/no-such-test-item'
     Assert-Equal ((ConvertTo-WindowsPathOperands @('text /c/a')) -join '|') 'text /c/a'
+    Assert-Equal ((ConvertTo-WindowsPathOperands @('relative/file.txt')) -join '|') 'relative/file.txt'
+}
+Test-Case 'path operands handle quoted values variables and home paths consistently' {
+    $path = '/i/中文 folder/file.txt'
+    Assert-Equal (ConvertTo-WindowsPathOperands @($path) -Literal) 'I:/中文 folder/file.txt'
+    Assert-Equal (ConvertTo-WindowsPathOperands @('/i/中文 folder/file.txt') -Literal) 'I:/中文 folder/file.txt'
+    Assert-Equal (ConvertTo-WindowsPathOperands @('~/file.txt') -Literal) (winpath '~/file.txt')
+    Assert-Equal (ConvertTo-WindowsPathOperands @('//server/share/file.txt') -Literal) '//server/share/file.txt'
+    Assert-Equal (ConvertTo-WindowsPathOperands @('I:\中文 folder\file.txt') -Literal) 'I:\中文 folder\file.txt'
+}
+Test-Case 'path operands skip absent values without turning them into filesystem requests' {
+    Assert-Equal (@(ConvertTo-WindowsPathOperands $null)).Count 0
+    Assert-Equal (@(ConvertTo-WindowsPathOperands @())).Count 0
+    Assert-Equal ((ConvertTo-WindowsPathOperands @($null, 'a', $null, 'b')) -join '|') 'a|b'
+}
+Test-Case 'path conversion precedes glob expansion and literal mode never expands targets' {
+    $root = Join-Path $HOME '路径 glob'
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    try {
+        [IO.File]::WriteAllText((Join-Path $root 'one.txt'), 'one')
+        [IO.File]::WriteAllText((Join-Path $root 'two.txt'), 'two')
+        $pattern = (unixpath $root) + '/*.txt'
+        $paths = @(ConvertTo-WindowsPathOperands @($pattern) -Absolute)
+        Assert-Equal $paths.Count 2
+        foreach ($path in $paths) {
+            Assert-Equal ([IO.File]::Exists($path)) $true
+        }
+        $literal = @(ConvertTo-WindowsPathOperands @($pattern) -Literal -Absolute)
+        Assert-Equal $literal.Count 1
+        Assert-Equal $literal[0] ($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((winpath $pattern)))
+        $unmatched = (unixpath $root) + '/missing-*.txt'
+        Assert-Equal (ConvertTo-WindowsPathOperands @($unmatched)) (winpath $unmatched)
+        Assert-Equal (Resolve-WindowsPath ((unixpath $root) + '/[draft].txt')) (Join-Path $root '[draft].txt')
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force
+    }
+}
+Test-Case 'absolute path resolution uses shell location and normalizes relative segments' {
+    $root = Join-Path $HOME 'resolve folder'
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    Push-Location -LiteralPath $root
+    try {
+        Assert-Equal (Resolve-WindowsPath './child/../missing.txt') (Join-Path $root 'missing.txt')
+        Assert-Equal (Resolve-WindowsPath '/i/tmp/file.txt') 'I:\tmp\file.txt'
+        Assert-Equal (Resolve-WindowsPath '~/missing.txt') (Join-Path $HOME 'missing.txt')
+        Assert-Equal (Resolve-WindowsPath '\\server\share\missing.txt') '\\server\share\missing.txt'
+        Assert-Equal (ConvertTo-WindowsPathOperands @('./missing.txt') -Literal -Absolute) (Join-Path $root 'missing.txt')
+    } finally { Pop-Location; Remove-Item -LiteralPath $root -Recurse -Force }
 }
 Test-Case 'absolute completion containing spaces is executable' {
     $directory = Join-Path $HOME 'my work'

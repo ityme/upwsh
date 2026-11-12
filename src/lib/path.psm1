@@ -54,11 +54,21 @@ function Expand-PathGlob {
 }
 
 function ConvertTo-WindowsPathOperands {
-    param([object[]]$Arguments)
+    param(
+        [object[]]$Arguments,
+        [switch]$Literal,
+        [switch]$Absolute
+    )
 
+    # Callers pass known path operands only, never option values or search patterns.
     foreach ($argument in @($Arguments)) {
+        if ($null -eq $argument) { continue }
         if ($argument -is [string]) {
-            Expand-PathGlob $argument
+            $converted = winpath $argument
+            $paths = if ($Literal) { @($converted) } else { @(Expand-PathGlob $converted) }
+            foreach ($path in $paths) {
+                if ($Absolute) { Resolve-WindowsPath $path } else { $path }
+            }
         } else {
             $argument
         }
@@ -134,11 +144,10 @@ function ConvertTo-WindowsArguments {
 
 function Resolve-WindowsPath {
     param([string]$Path)
-    $windowsPath = $Path
-    if ([IO.Path]::IsPathRooted($windowsPath) -or $windowsPath -match '^[a-zA-Z]:[^\\/]') { return $windowsPath }
-    try {
-        return [IO.Path]::GetFullPath((Join-Path (Get-Location).ProviderPath $windowsPath))
-    } catch { return $windowsPath }
+    $windowsPath = winpath $Path
+    # Resolve against PowerShell's location, not the process working directory.
+    # Literal resolution also works for destinations that do not exist yet.
+    return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($windowsPath)
 }
 
 function ConvertFrom-QuotedText {
