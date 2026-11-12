@@ -174,7 +174,12 @@ function Get-HookCompletionEdit {
             $length++
         }
     }
-    [pscustomobject]@{ Start = $State.ReplacementIndex; Length = $length; Text = $text }
+    $cursor = $State.ReplacementIndex + $text.Length
+    if ($text.Length -ge 2 -and $text[0] -in @([char]39, [char]34) -and $text[-1] -eq $text[0]) {
+        # Keep the closing quote in the buffer and continue typing inside it.
+        $cursor--
+    }
+    [pscustomobject]@{ Start = $State.ReplacementIndex; Length = $length; Text = $text; Cursor = $cursor }
 }
 
 function Complete-HookTab {
@@ -210,6 +215,7 @@ function Complete-HookTab {
             $edit.Length,
             $edit.Text
         )
+        [Microsoft.PowerShell.PSConsoleReadLine]::SetCursorPosition($edit.Cursor)
         return
     }
 
@@ -228,11 +234,9 @@ function Complete-HookTab {
                 [StringComparison]::OrdinalIgnoreCase
             )
         ) {
-            [Microsoft.PowerShell.PSConsoleReadLine]::Replace(
-                $state.ReplacementIndex,
-                $state.ReplacementLength,
-                $decision.Replacement
-            )
+            $edit = Get-HookCompletionEdit -State $state -Decision $decision
+            [Microsoft.PowerShell.PSConsoleReadLine]::Replace($edit.Start, $edit.Length, $edit.Text)
+            [Microsoft.PowerShell.PSConsoleReadLine]::SetCursorPosition($edit.Cursor)
             return
         }
 

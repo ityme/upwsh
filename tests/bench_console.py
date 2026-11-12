@@ -49,6 +49,7 @@ parser.add_argument('--samples', type=int, default=40)
 parser.add_argument('--budget-ms', type=float, default=30)
 parser.add_argument('--enforce', action='store_true')
 parser.add_argument('--completion', action='store_true', help='Measure git pull origin <Tab> in an isolated repository')
+parser.add_argument('--quoted-path', action='store_true', help='Verify quoted directory/file completion cursor and continued typing')
 parser.add_argument('--lifecycle', action='store_true', help='Verify render counts for redraw, cancellation, submission, and interruption')
 parser.add_argument('--osc', action='store_true', help='Verify OSC frame order, encoded cwd and delta reporting on the wire')
 options = parser.parse_args()
@@ -142,6 +143,13 @@ try:
         env['UPWSH_BENCH_CWD'] = str(bench_home / 'space # literal%20')
         Path(env['UPWSH_BENCH_CWD']).mkdir()
     working_directory = os.getcwd()
+    if options.quoted_path:
+        fixture = bench_home / 'quoted-fixture'
+        (fixture / 'space folder').mkdir(parents=True)
+        (fixture / 'space folder' / 'child file.txt').write_text('fixture', encoding='utf-8')
+        (fixture / 'shared alpha').mkdir()
+        (fixture / 'shared beta').mkdir()
+        working_directory = str(fixture)
     if options.completion:
         fixture = bench_home / 'repo'
         fixture.mkdir()
@@ -161,7 +169,7 @@ try:
             subprocess.run(['git', '-C', str(fixture), *args], env=env, check=True, capture_output=True)
     env_block = c.create_unicode_buffer('\0'.join(f'{key}={value}' for key, value in sorted(env.items())) + '\0\0')
     script = ". '" + str(runtime).replace("'", "''") + "'"
-    if options.completion or options.lifecycle or options.osc:
+    if options.completion or options.lifecycle or options.osc or options.quoted_path:
         script += r""";
 Set-PSReadLineOption -HistorySavePath (Join-Path $HOME 'fixture-history.txt') -HistorySaveStyle SaveNothing
 $global:UpwshBenchRenders = 0
@@ -278,7 +286,7 @@ Set-PSReadLineKeyHandler -Chord Ctrl+g -ScriptBlock {
         check_action('success after interruption', b'$null=2\r', 1, finishes=1)
         assert previous['Status']['Succeeded'] is True and previous['RendererSucceeded'] is True, rows[-1]
         check_action('Ctrl+o alternative submit', b'$null=3' + bytes([15]), 1, finishes=1)
-        check_action('path arguments still convert on Enter', b'Write-Output /c/fixture\r', 1, finishes=1)
+        check_action('path-shaped text stays unchanged on Enter', b'Write-Output /c/fixture\r', 1, finishes=1)
         check_action('recall original Unix command', b'\x1b[A', 0, 'Write-Output /c/fixture')
         check_action('cancel recalled input', bytes([3]), 0)
         check_action('cmdlet failure', b'Write-Error "fixture failure"\r', 1, finishes=1)
@@ -288,6 +296,28 @@ Set-PSReadLineKeyHandler -Chord Ctrl+g -ScriptBlock {
         check_action('idle after syntax error', bytes([13]), 0)
         check_action('empty Ctrl+C', bytes([3]), 0)
         print(json.dumps({'lifecycle_checks': rows, 'passed': True}))
+    elif options.quoted_path:
+        rows = []
+        for command in ('touch -p', 'cp', 'mv', 'ls', 'git add', 'git checkout'):
+            row = capture_buffer(command.encode() + b' spa\t')
+            expected = command + " 'space folder/'"
+            assert row['Line'] == expected and row['Cursor'] == len(expected) - 1, row
+            assert 'winpath' not in row['Line'], row
+            rows.append({'command': command, 'directory': True})
+            send(bytes([3]))
+            await_prompt()
+        row = capture_buffer(b'touch -p sha\t')
+        expected = "touch -p 'shared '"
+        assert row['Line'] == expected and row['Cursor'] == len(expected) - 1, row
+        send(bytes([3]))
+        await_prompt()
+        row = capture_buffer(b'touch -p spa\tchi\t')
+        expected = "touch -p 'space folder/child file.txt'"
+        assert row['Line'] == expected and row['Cursor'] == len(expected) - 1, row
+        row = capture_buffer(b'.bak')
+        assert row['Line'] == "touch -p 'space folder/child file.txt.bak'", row
+        assert row['Cursor'] == len(row['Line']) - 1, row
+        print(json.dumps({'quoted_path_checks': rows, 'continued_typing': True, 'passed': True}))
     elif options.completion:
         typed = capture_buffer(b'git pull origin ')
         rows = [capture_buffer(bytes([9])) for _ in range(options.samples + 5)]

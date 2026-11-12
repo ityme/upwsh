@@ -216,12 +216,7 @@ function ConvertTo-PathCompletionText {
         if ($item -match '^[\p{L}\p{M}\p{N}._~/:+=%!-]+$' -and -not $item.StartsWith('-')) {
             $item
         } else {
-            $quoted = "'$($item.Replace("'", "''"))'"
-            if (-not $LiteralPaths -and $item -match '^(?:/[A-Za-z](?:/|$)|~(?:/|$))') {
-                "(winpath $quoted)"
-            } else {
-                $quoted
-            }
+            "'$($item.Replace("'", "''"))'"
         }
     }
 }

@@ -48,13 +48,13 @@ Test-Interaction 'empty prefix still counts all candidates' {
         Assert-Equal $result.Replacement ''
     }
 }
-Test-Interaction 'quoted and explicit conversion candidates preserve their executable prefix' {
+Test-Interaction 'legacy conversion candidates normalize to plain quoted common prefixes' {
     $matches = @(foreach ($text in @("(winpath '/c/my work/a')", "(winpath '/c/my work/b')")) {
         [Management.Automation.CompletionResult]::new($text, $text, 'ProviderItem', $text)
     })
     $result = Get-CompletionDecision -Matches $matches -CurrentText '/c/my' -Normalized
     Assert-Equal $result.MatchCount 2
-    Assert-Equal $result.Replacement "(winpath '/c/my work/')"
+    Assert-Equal $result.Replacement "'/c/my work/'"
     $result = Get-CompletionDecision -Matches $matches -CurrentText '/c/my' -Normalized -LiteralPaths
     Assert-Equal $result.Replacement "'/c/my work/'"
 }

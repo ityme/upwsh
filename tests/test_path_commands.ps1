@@ -612,8 +612,13 @@ Test-Case 'absolute completion containing spaces is executable' {
     $decision = Get-CompletionDecision -Matches $state.Matches -CurrentText $text
     $completed = $line.Remove($state.ReplacementIndex, $state.ReplacementLength).Insert($state.ReplacementIndex, $decision.Replacement)
     function capture { $args }
-    Assert-Equal (Invoke-Expression (ConvertTo-WindowsCommandLine $completed)) ($directory.Replace('\','/') + '/')
-    if (-not $completed.Contains('(winpath ')) { throw 'completion missed explicit conversion' }
+    Assert-Equal (Invoke-Expression (ConvertTo-WindowsCommandLine $completed)) ((unixpath $directory) + '/')
+    if ($completed.Contains('(winpath ')) { throw 'completion exposed a conversion expression' }
+    $module = (Get-Command Complete-HookLine).Module
+    $edit = & $module { param($s,$d) Get-HookCompletionEdit $s $d } $state $decision
+    Assert-Equal $edit.Cursor ($edit.Start + $edit.Text.Length - 1)
+    # Known path consumers still resolve the plain quoted value correctly.
+    Assert-Equal ((Resolve-WindowsPath (Invoke-Expression $completed)).TrimEnd('\', '/')) $directory
 }
 Test-Case 'attached option completion produces a usable path without Enter rewriting' {
     $match = [Management.Automation.CompletionResult]::new("--output='C:\my work'", 'my work', 'ProviderContainer', 'C:\my work')
@@ -621,17 +626,22 @@ Test-Case 'attached option completion produces a usable path without Enter rewri
     function capture { $args }
     Assert-Equal (Invoke-Expression ('capture ' + $normalized.CompletionText)) '--output=C:/my work/'
 }
-Test-Case 'repeated Tab inside generated winpath completion stays executable' {
-    $line = "capture (winpath '~/my work/')"
+Test-Case 'repeated Tab inside a quoted path keeps the cursor inside the closing quote' {
+    $line = "touch -p '~/my work/'"
     $child = Join-Path $HOME 'my work\child.txt'
     [IO.File]::WriteAllText($child, '')
-    $cursor = $line.IndexOf("')")
+    $cursor = $line.Length - 1
     $state = Complete-HookLine -Line $line -Cursor $cursor
     $text = $line.Substring($state.ReplacementIndex, $state.ReplacementLength)
     $decision = Get-CompletionDecision -Matches $state.Matches -CurrentText $text -LiteralPaths:$state.LiteralPaths
-    $completed = $line.Remove($state.ReplacementIndex, $state.ReplacementLength).Insert($state.ReplacementIndex, $decision.Replacement)
-    function capture { $args }
-    Assert-Equal (Invoke-Expression (ConvertTo-WindowsCommandLine $completed)) $child.Replace('\','/')
+    $module = (Get-Command Complete-HookLine).Module
+    $edit = & $module { param($s,$d) Get-HookCompletionEdit $s $d } $state $decision
+    $completed = $line.Remove($edit.Start, $edit.Length).Insert($edit.Start, $edit.Text)
+    Assert-Equal $completed "touch -p '~/my work/child.txt'"
+    Assert-Equal $edit.Cursor ($completed.Length - 1)
+    # Typing at the returned cursor appends to the path, not after the quote.
+    $typed = $completed.Insert($edit.Cursor, '.bak')
+    Assert-Equal $typed "touch -p '~/my work/child.txt.bak'"
 }
 Test-Case 'completion within explicit conversion keeps the literal path argument' {
     $line = "capture (winpath '~/my')"

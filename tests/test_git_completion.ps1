@@ -29,7 +29,7 @@ function Complete-GitTab {
     $edit = & $module { param($state, $decision) Get-HookCompletionEdit -State $state -Decision $decision } $state $decision
     [pscustomobject]@{
         Line = $Line.Remove($edit.Start, $edit.Length).Insert($edit.Start, $edit.Text)
-        Cursor = $edit.Start + $edit.Text.Length
+        Cursor = $edit.Cursor
     }
 }
 function Assert-Candidate {

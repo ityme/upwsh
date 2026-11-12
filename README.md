@@ -70,7 +70,7 @@ cd (winpath '~/my work')
 'C:\one', 'D:\two' | unixpath
 ```
 
-Both commands accept multiple paths and pipeline input; paths need not exist. Tab inserts `(winpath '…')` when an absolute Unix path needs quoting. A standalone existing directory still becomes a `cd` command. Other command text, including bare arguments, comments, scripts, redirections, and combined options, is not automatically rewritten. `cp` overwrites ordinary existing files; `-f` additionally allows replacing read-only targets without bypassing locks or permissions.
+Both commands accept multiple paths and pipeline input; paths need not exist. Tab adds quotes when a path needs them and places the cursor before the closing quote for both files and directories. Continue typing or press Tab inside the quotes; use Right Arrow to move past the quote before entering another argument. Completion never inserts a `winpath` expression; external programs that need Windows paths still require explicit `winpath`. A standalone existing directory still becomes a `cd` command. Other command text, including bare arguments, comments, scripts, redirections, and combined options, is not automatically rewritten. `cp` overwrites ordinary existing files; `-f` additionally allows replacing read-only targets without bypassing locks or permissions.
 
 `rm` sends local fixed-drive files to the Recycle Bin. Windows reserved names (`nul`, `con`, `aux`, `prn`, `com1`–`com9`, `lpt1`–`lpt9`) cannot use that API. Tab skips them. Delete with an extended path: `[IO.File]::Delete('\\?\D:\work\nul')`.
 

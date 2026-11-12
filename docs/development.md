@@ -45,7 +45,7 @@ Git completion tests create and remove isolated local repositories with fixture 
 
 ## Path conversion
 
-`src/lib/path_convert.ps1` defines `winpath` and `unixpath`. Interactive input, completion, command output, and setup share these interfaces. The Enter handler only recognizes a standalone existing directory for navigation; it never infers argument roles from path-shaped strings. Command adapters and explicit `winpath` expressions convert known paths; the converter functions only transform path text.
+`src/lib/path_convert.ps1` defines `winpath` and `unixpath`. Path conversion, completion normalization, command output, and setup share these interfaces. Path candidates use plain quoting rather than generated conversion expressions; the shared hook edit returns the cursor before a closing quote for files, directories, and common prefixes. Explicit user-written winpath expressions remain supported. The Enter handler only recognizes a standalone existing directory for navigation; it never infers argument roles from path-shaped strings. Command adapters and explicit `winpath` expressions convert known paths; the converter functions only transform path text.
 
 Known filesystem operands use `ConvertTo-WindowsPathOperands`: it applies `winpath` before glob expansion, skips null operands, and preserves relative output by default. Use `-Literal` for destinations or paths that must not expand wildcards, and `-Absolute` when an absolute path is required. `Resolve-WindowsPath` converts then resolves against PowerShell's current location, without requiring the target to exist; resolution errors propagate instead of returning an unprocessed path. These interfaces accept path values, not shell-quoted source text or arbitrary option/search values. All ordinary command arguments, bare or quoted, remain untouched by Enter; external commands can use explicit `winpath` expressions. `Resolve-WindowsPath -PreserveProvider` preserves non-filesystem provider navigation syntax, including relative paths while inside such a provider.
 
@@ -76,6 +76,7 @@ The user's folder-only requirement overrides the reference's three-component pat
 pwsh -NoLogo -NoProfile -File tests/bench_prompt.ps1 -Enforce
 python tests/bench_console.py --enforce
 python tests/bench_console.py --completion --samples 20
+python tests/bench_console.py --quoted-path
 python tests/bench_console.py --lifecycle
 python tests/bench_console.py --osc
 pwsh -NoLogo -NoProfile -File tests/bench_term.ps1
