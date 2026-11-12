@@ -352,7 +352,7 @@ function global:cp {
         $copyOptions = $parsed.Options
         # Preflight the complete operation before creating targets or changing attributes.
         foreach ($source in $sources) { Assert-CopyPathWithoutLinks $source -Recurse }
-        Assert-CopyPathWithoutLinks $destination -Recurse
+        Assert-CopyPathWithoutLinks $destination
         $sourceItems = @(
             foreach ($source in $sources) {
                 Get-Item -LiteralPath $source -Force -ErrorAction Stop
@@ -394,6 +394,14 @@ function global:cp {
             if ([IO.Path]::GetFullPath($targetPath).TrimEnd('\', '/').Equals($sourcePath, [StringComparison]::OrdinalIgnoreCase)) {
                 throw "cp: source and destination are the same directory: '$sourcePath'."
             }
+        }
+        # Inspect only each effective write target, not unrelated destination siblings.
+        # Preflight all sources before starting any copy in a multi-source operation.
+        foreach ($item in $sourceItems) {
+            $targetPath = if ($destinationExists -or $sourceItems.Count -gt 1) {
+                Join-Path $destination $item.Name
+            } else { $destination }
+            Assert-CopyPathWithoutLinks $targetPath -Recurse:($item -is [IO.DirectoryInfo])
         }
         [IO.Directory]::CreateDirectory($copyRoot) | Out-Null
         if ($singleFileRename -and $sourceItems[0].FullName.Equals($destination, [StringComparison]::OrdinalIgnoreCase)) {

@@ -12,10 +12,12 @@ if ($env:UPWSH_TEST_ISOLATED -ne '1') {
 }
 . (Join-Path $PSScriptRoot '..\src\profile.ps1')
 $script:Passed = 0
+$script:Skipped = 0
 $script:Failures = [Collections.Generic.List[string]]::new()
 function Test-Case {
     param([string]$Name, [scriptblock]$Body)
-    try { & $Body; $script:Passed++ } catch { $script:Failures.Add("$Name`: $($_.Exception.Message)") }
+    $skippedBefore = $script:Skipped
+    try { & $Body; if ($script:Skipped -eq $skippedBefore) { $script:Passed++ } } catch { $script:Failures.Add("$Name`: $($_.Exception.Message)") }
 }
 function Assert-Equal {
     param($Actual, $Expected)
@@ -331,12 +333,70 @@ Test-Case 'cp rejects junction parents and source or target tree links before wr
         Remove-Item -LiteralPath $root -Recurse -Force
     }
 }
+Test-Case 'cp ignores unrelated target junctions but rejects links at effective write targets' {
+    $root = Join-Path $HOME 'copy target scope'
+    $links = [Collections.Generic.List[string]]::new()
+    try {
+        $source = Join-Path $root source
+        $destination = Join-Path $root destination
+        $other = Join-Path $root other
+        foreach ($p in @($source,$destination,$other)) { [IO.Directory]::CreateDirectory($p) | Out-Null }
+        [IO.File]::WriteAllText((Join-Path $source 'a.txt'), 'new')
+        [IO.File]::WriteAllText((Join-Path $other 'keep.txt'), 'keep')
+        $unrelated = Join-Path $destination unrelated
+        New-Item -ItemType Junction -Path $unrelated -Target $other | Out-Null
+        $links.Add($unrelated)
+        cp (Join-Path $source 'a.txt') $destination
+        Assert-Equal $LASTEXITCODE 0
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'a.txt'))) 'new'
+        cp -r $source $destination
+        Assert-Equal $LASTEXITCODE 0
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $destination 'source/a.txt'))) 'new'
+        Assert-Equal ([IO.File]::ReadAllText((Join-Path $other 'keep.txt'))) 'keep'
+
+        $nested = Join-Path $destination 'source/nested'
+        New-Item -ItemType Junction -Path $nested -Target $other | Out-Null
+        $links.Add($nested)
+        # A later invalid source must prevent earlier sources from being copied too.
+        $early = Join-Path $root 'early.txt'
+        [IO.File]::WriteAllText($early, 'early')
+        $message = ''
+        try { cp -rf $early $source $destination } catch { $message = $_.Exception.Message }
+        if ($message -notmatch 'reparse point') { throw "effective subtree link was not rejected: $message" }
+        Assert-Equal (Test-Path -LiteralPath (Join-Path $destination 'early.txt')) $false
+
+        $fileLink = Join-Path $destination 'early.txt'
+        New-Item -ItemType Junction -Path $fileLink -Target $other | Out-Null
+        $links.Add($fileLink)
+        $message = ''
+        try { cp -f $early $destination } catch { $message = $_.Exception.Message }
+        if ($message -notmatch 'reparse point') { throw "effective file target link was not rejected: $message" }
+    } finally {
+        foreach ($link in $links) { [IO.Directory]::Delete($link) }
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 Test-Case 'copy preflight rejects dangling symbolic links without following them' {
     $root = Join-Path $HOME 'copy symlinks'
     [IO.Directory]::CreateDirectory($root) | Out-Null
     $link = Join-Path $root link.txt
     try {
-        New-Item -ItemType SymbolicLink -Path $link -Target (Join-Path $root missing.txt) -ErrorAction Stop | Out-Null
+        try {
+            New-Item -ItemType SymbolicLink -Path $link -Target (Join-Path $root missing.txt) -ErrorAction Stop | Out-Null
+        } catch {
+            # PowerShell's explicit elevation check or Windows ERROR_PRIVILEGE_NOT_HELD.
+            # Do not hide access-denied, invalid-path, or other unexpected test failures.
+            $exception = $_.Exception
+            $privilegeMissing = $_.FullyQualifiedErrorId -like 'NewItemSymbolicLinkElevationRequired,*'
+            while ($exception) {
+                if (($exception.HResult -band 0xffff) -eq 1314) { $privilegeMissing = $true }
+                $exception = $exception.InnerException
+            }
+            if (-not $privilegeMissing) { throw }
+            $script:Skipped++
+            Write-Output 'SKIP: symbolic-link creation requires Developer Mode or SeCreateSymbolicLinkPrivilege; junction tests still run.'
+            return
+        }
         $message = ''
         try { Assert-CopyPathWithoutLinks $link } catch { $message = $_.Exception.Message }
         if ($message -notmatch 'reparse point') { throw "dangling symbolic link not rejected: $message" }
@@ -518,4 +578,4 @@ if ($script:Failures.Count) {
     $script:Failures | ForEach-Object { Write-Error $_ -ErrorAction Continue }
     throw "$($script:Failures.Count) path command tests failed."
 }
-Write-Output "$script:Passed path command tests passed."
+Write-Output "$script:Passed path command tests passed; $script:Skipped skipped."
