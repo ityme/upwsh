@@ -123,6 +123,28 @@ function Write-CliToolListLine {
     Write-Output ('{0,-10} | {1} | {2}' -f $Name, $state, $Description)
 }
 
+function Write-CliToolInstallRow {
+    param([string]$Name, [string]$Version = '-', [string]$Status, [string]$Path = '-', [switch]$Pending)
+
+    # Only a real terminal gets an in-place download row; pipes get final rows only.
+    $interactive = $Host.UI.SupportsVirtualTerminal -and -not [Console]::IsOutputRedirected
+    if ($Pending -and -not $interactive) { return }
+    if ($script:ToolRowPending) { [Console]::Write("`r$([char]27)[2K") }
+    $state = '{0,-11}' -f $Status
+    if (Test-UpwshStatusColor) {
+        $color = switch ($Status) {
+            'installed' { $PSStyle.Foreground.Green }
+            'downloading' { $PSStyle.Foreground.Cyan }
+            'failed' { $PSStyle.Foreground.Red }
+            default { $PSStyle.Foreground.BrightBlack }
+        }
+        $state = "$color$state$($PSStyle.Reset)"
+    }
+    $row = '  {0,-10}  {1,-9}  {2}  {3}' -f $Name, $Version, $state, $Path
+    $script:ToolRowPending = [bool]$Pending
+    if ($Pending) { [Console]::Write($row) } else { Write-Output $row }
+}
+
 function Uninstall-CliTool {
     param($Tool, [string]$Destination)
 
@@ -140,11 +162,12 @@ function Install-CliTool {
 
     $target = Join-Path $Destination $Tool.Exe
     if (-not $Force -and (Test-Path -LiteralPath $target)) {
-        Write-UpwshStatus skip "$($Tool.Name)  already installed"
+        Write-CliToolInstallRow -Name $Tool.Name -Status installed -Path $target
         return
     }
 
     $release = Get-GitHubLatestRelease -Repo $Tool.Repo
+    $Tool.InstallVersion = [string]$release.tag_name
     $asset = Get-ReleaseAsset -Release $release -Exe $Tool.Exe
     if (-not $asset) {
         throw "no Windows amd64 asset for $($Tool.Repo)"
@@ -156,7 +179,7 @@ function Install-CliTool {
     New-Item -ItemType Directory -Path $tempRoot | Out-Null
     try {
         $download = Join-Path $tempRoot $asset.name
-        Write-UpwshStatus get "$($Tool.Name)  $($release.tag_name)  $($asset.name)"
+        Write-CliToolInstallRow -Name $Tool.Name -Version $Tool.InstallVersion -Status downloading -Pending
         Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $download -UseBasicParsing
 
         if ($asset.name -like '*.zip') {
@@ -173,7 +196,7 @@ function Install-CliTool {
 
         New-Item -ItemType Directory -Path $Destination -Force | Out-Null
         Copy-Item -LiteralPath $extracted.FullName -Destination $target -Force
-        Write-UpwshStatus ok "$($Tool.Name)  $target"
+        Write-CliToolInstallRow -Name $Tool.Name -Version $Tool.InstallVersion -Status installed -Path $target
     } finally {
         Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -226,7 +249,14 @@ if ($List) {
 }
 
 New-Item -ItemType Directory -Path $Dir -Force | Out-Null
-Write-UpwshStatus dir $Dir
+if ($Uninstall) {
+    Write-UpwshStatus dir $Dir
+} else {
+    Write-Output ('  {0,-10}  {1,-9}  {2,-11}  {3}' -f 'Tool', 'Version', 'Status', 'Path')
+    Write-Output ('  {0}  {1}  {2}  {3}' -f ('-' * 10), ('-' * 9), ('-' * 11), ('-' * 40))
+}
+$script:ToolRowPending = $false
+$global:LASTEXITCODE = 0
 $failed = [Collections.Generic.List[string]]::new()
 foreach ($tool in $selected) {
     try {
@@ -237,7 +267,12 @@ foreach ($tool in $selected) {
         Install-CliTool -Tool $tool -Destination $Dir -Force:$Update
     } catch {
         $failed.Add("$($tool.Name): $($_.Exception.Message)")
-        Write-UpwshStatus error "$($tool.Name)  $($_.Exception.Message)"
+        if ($Uninstall) {
+            Write-UpwshStatus error "$($tool.Name)  $($_.Exception.Message)"
+        } else {
+            $version = if ($tool.InstallVersion) { $tool.InstallVersion } else { '-' }
+            Write-CliToolInstallRow -Name $tool.Name -Version $version -Status failed
+        }
     }
 }
 
