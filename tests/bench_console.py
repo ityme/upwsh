@@ -142,6 +142,7 @@ try:
         env['UPWSH_OSC'] = 'On'
         env['UPWSH_BENCH_CWD'] = str(bench_home / 'space # literal%20')
         Path(env['UPWSH_BENCH_CWD']).mkdir()
+        (Path(env['UPWSH_BENCH_CWD']) / 'foreground').mkdir()
     working_directory = os.getcwd()
     if options.quoted_path:
         fixture = bench_home / 'quoted-fixture'
@@ -221,6 +222,32 @@ Set-PSReadLineKeyHandler -Chord Ctrl+g -ScriptBlock {
         from urllib.parse import urlsplit, unquote
         parsed = urlsplit(uris[-1].decode('utf-8'))
         assert not parsed.fragment and unquote(parsed.path).lstrip('/') == env['UPWSH_BENCH_CWD'].replace('\\', '/')
+        # Hold a native foreground process open: CWD must be sent before it starts,
+        # without relying on the PowerShell prompt after the process exits.
+        send(b"""cd (Join-Path $env:UPWSH_BENCH_CWD 'foreground'); & (Get-Process -Id $PID).Path -NoLogo -NoProfile -Command "[Console]::Write('UPWSH_FOREGROUND_READY'); [void][Console]::ReadLine()"\r""")
+        wire = b''
+        deadline = time.perf_counter() + 20
+        while time.perf_counter() < deadline:
+            try:
+                part = chunks.get(timeout=max(.01, deadline - time.perf_counter()))
+            except queue.Empty:
+                break
+            wire += part
+            if b'\x1b[6n' in part:
+                send(b'\x1b[1;1R')
+            # The token also appears in the echoed command, so check after OSC133 C.
+            running = wire.find(b'\x1b]133;C\x07')
+            if running >= 0 and b'UPWSH_FOREGROUND_READY' in wire[running:]:
+                break
+        running = wire.find(b'\x1b]133;C\x07')
+        active = wire[running:] if running >= 0 else b''
+        marker = active.find(b'UPWSH_FOREGROUND_READY')
+        cwd_event = active.find(b'\x1b]7;')
+        assert 0 <= cwd_event < marker, 'CWD was not sent before the foreground process'
+        assert b'/foreground\x07' in active[:marker], 'foreground CWD missing'
+        assert b'\x1b]133;A' not in active and b'\x1b]133;D;' not in active, 'cd invented prompt/completion events'
+        send(b'\r')
+        await_prompt()
         failure = capture_buffer(b'Write-Error "OSC fixture"\r')
         verify_frame(failure['wire'])
         assert b'\x1b]133;D;1\x07' in failure['wire']
@@ -228,7 +255,7 @@ Set-PSReadLineKeyHandler -Chord Ctrl+g -ScriptBlock {
         assert after['finished_events'] == 0 and b'LAST_ELAPSED_MS=' not in after['wire']
         assert after['Status']['Succeeded'] is False
         print(json.dumps({'wire_order': 'A < visible prompt < B', 'cwd_encoding': True,
-                          'idle_fields_omitted': True, 'failure_exit': 1, 'passed': True}))
+                          'idle_fields_omitted': True, 'cwd_before_foreground': True, 'failure_exit': 1, 'passed': True}))
     elif options.lifecycle:
         rows = []
         previous = capture_buffer(b'')

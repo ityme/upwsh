@@ -70,10 +70,12 @@ On completion, `CMD` and `COMMAND` clear and `BUSY` becomes `0`. `LAST_CMD` and 
 ## Protocol And Sending Rules
 
 - **OSC 133:** `A` precedes visible prompt output, `B` follows it, `C` precedes command output, and `D;<code>` closes an executed command. An idle/abandoned input is closed with an unnumbered `D`, not a false successful result. Pure editing redraws do not emit lifecycle markers.
-- **OSC 7:** a percent-encoded file URI with a host/UNC authority. This uses real Windows paths, not the shell's `/c/...` shorthand.
+- **OSC 7:** a percent-encoded file URI with empty authority for local drives and server authority for UNC paths. This uses real Windows paths, not the shell's `/c/...` shorthand.
 - **OSC 2:** a bounded, control-character-filtered title.
 - **OSC 9;9:** optional native working-directory reporting for Windows Terminal.
 - **OSC 1337:** base64-encoded UTF-8 user variables, sent only when selected and changed.
+
+After a successful upwsh `cd` (including `cd -`, `mkcd`, and shortcuts routed through `cd`), the shell immediately sends changed location fields and enabled OSC 7 / OSC 9;9 channels. This happens before the next command in `cd project; pi`, so terminal working-directory tracking does not wait for Pi to exit. It sends no prompt/command-boundary markers, title change, completion status, or busy-state change, and preserves the native exit code. Failed directory changes send nothing; unchanged location values are deduplicated. Direct `Set-Location` and other programs that change directory still synchronize at the next prompt.
 
 The first prompt sends a full snapshot. Unchanged idle prompts send only necessary lifecycle markers: normally 24 bytes for `D`, `A`, and `B`. A completed command forces a full state resync because a child process or nested shell may have changed terminal state. This is intentional even when the parent-side values are unchanged. No polling is required.
 

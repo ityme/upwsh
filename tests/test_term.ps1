@@ -182,6 +182,60 @@ Test-Term 'Auto is silent with redirected output and On is an explicit override'
     Set-TermReporting -Mode Off
     Assert-Equal (Capture { Sync-TermPrompt; Complete-TermPrompt }) ''
 }
+Test-Term 'cd reports new location before the next same-line command without prompt events' {
+    $original = (Get-Location).Path
+    $target = Join-Path $HOME '立即同步 # literal%20'
+    [IO.Directory]::CreateDirectory($target) | Out-Null
+    try {
+        Set-TermReporting -Fields @('OSC133','OSC7','OSC9_9','USERVARS','CWD','CWD_UNIX','PROVIDER','LOCATION','BUSY','COMMAND_ID')
+        $null = Capture { Sync-TermPrompt -CommandCompleted:$false; Sync-TermCommand 'cd target; external' }
+        $before = & $term { @($script:TermPhase, $script:TermCommandId, $script:TermCommandStarted, $script:TermEndPending) }
+        $global:LASTEXITCODE = 17
+        # The marker stands in for a foreground TUI: no prompt runs between cd and it.
+        $wire = Capture { cd (unixpath $target); [Console]::Write('EXTERNAL_STARTED') }
+        $expected = & $term { param($p) ConvertTo-TermFileUri $p } $target
+        if ($wire.IndexOf("]7;$expected") -lt 0 -or $wire.IndexOf("]7;$expected") -gt $wire.IndexOf('EXTERNAL_STARTED')) { throw 'new CWD was not sent before external command' }
+        if (-not $wire.Contains("]9;9;`"$target`"")) { throw 'Windows Terminal directory report missing' }
+        Assert-Equal (Variables $wire).CWD $target
+        Assert-Equal (Variables $wire).CWD_UNIX (unixpath $target)
+        if ($wire.Contains(']133;') -or $wire.Contains('SetUserVar=BUSY=') -or $wire.Contains('SetUserVar=COMMAND_ID=') -or $wire.Contains(']2;')) { throw 'cd emitted unrelated lifecycle or title events' }
+        $after = & $term { @($script:TermPhase, $script:TermCommandId, $script:TermCommandStarted, $script:TermEndPending) }
+        Assert-Equal ($after -join '|') ($before -join '|')
+        Assert-Equal $global:LASTEXITCODE 17
+        Assert-Equal (Capture { cd (unixpath $target) }) ''
+        $failedWire = Capture { try { cd (Join-Path $target missing) } catch { } }
+        Assert-Equal $failedWire ''
+        Assert-Equal (Get-Location).ProviderPath $target
+        Set-Location -LiteralPath $original
+        $null = Capture { cd (unixpath $target); cd - }
+        Assert-Equal (Get-Location).Path $original
+        Set-TermReporting -Mode Off
+        Assert-Equal (Capture { cd (unixpath $target) }) ''
+        Assert-Equal (Get-Location).ProviderPath $target
+    } finally {
+        Set-Location -LiteralPath $original
+        Remove-Item -LiteralPath $target -Recurse -Force
+        $global:LASTEXITCODE = 0
+    }
+}
+Test-Term 'immediate location sync respects channel selection and provider paths' {
+    $original = (Get-Location).Path
+    try {
+        Set-TermReporting -Fields @('OSC7')
+        $null = Capture { Sync-TermPrompt -CommandCompleted:$false }
+        $wire = Capture { cd Env:\ }
+        # The filesystem CWD did not change; do not resend the same OSC7 value.
+        Assert-Equal $wire ''
+        if ($wire.Contains('SetUserVar=') -or $wire.Contains(']9;9;') -or $wire.Contains(']133;')) { throw 'unselected location channel emitted' }
+        Assert-Equal (Get-Location).Provider.Name 'Environment'
+        Set-TermReporting -Fields @('USERVARS','PROVIDER','LOCATION')
+        $wire = Capture { cd Variable:\ }
+        $values = Variables $wire
+        Assert-Equal $values.PROVIDER 'Variable'
+        Assert-Equal $values.LOCATION 'Variable:\'
+        if ($wire.Contains(']7;') -or $wire.Contains(']9;9;')) { throw 'disabled cwd channel emitted' }
+    } finally { Set-Location -LiteralPath $original }
+}
 Test-Term 'no command label invents an executable from an expression' {
     Assert-Equal (Get-TermCommandName '$null = 1') ''
     Assert-Equal (Get-TermCommandName '"text"') ''

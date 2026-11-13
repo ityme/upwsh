@@ -27,7 +27,10 @@ function global:cd {
         $script:PreviousDirectory = $current
     } catch {
         Write-Error $_
+        return
     }
+    # The reporting module is loaded later than filesystem commands during startup.
+    if (Get-Command Sync-TermLocation -ErrorAction Ignore) { Sync-TermLocation }
 }
 
 

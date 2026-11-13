@@ -218,6 +218,30 @@ function Get-TermLocationValues {
     return $script:TermLocationValues
 }
 
+function Add-TermLocationChannels {
+    param([bool]$Force = $false)
+    $cwd = $ExecutionContext.SessionState.Path.CurrentFileSystemLocation.ProviderPath
+    if ($script:TermFileUri) {
+        Add-TermChannel 'OSC7' "$([char]27)]7;$script:TermFileUri$([char]7)" $Force
+    }
+    if ($cwd -notmatch '[\x00-\x1f\x7f"\x9c]') {
+        Add-TermChannel 'OSC9_9' "$([char]27)]9;9;`"$cwd`"$([char]7)" $Force
+    }
+}
+
+function Sync-TermLocation {
+    # A directory can change before a long-running foreground command starts.
+    # Update location only: do not invent prompt or command-completion events.
+    if (-not (Test-TermOutput)) { $script:TermResync = $true; return }
+    $nativeExitCode = $global:LASTEXITCODE
+    try {
+        [void]$script:TermBuilder.Clear()
+        Add-TermVariables (Get-TermLocationValues)
+        Add-TermLocationChannels
+        Write-TermText $script:TermBuilder.ToString()
+    } finally { $global:LASTEXITCODE = $nativeExitCode }
+}
+
 function Sync-TermCommand {
     param([AllowEmptyString()][string]$Command = '')
     $script:TermCommandStarted = [Diagnostics.Stopwatch]::GetTimestamp()
@@ -305,12 +329,7 @@ function Sync-TermPrompt {
             LAST_NATIVE_EXIT = [string]$NativeExitCode; COMMAND_ID = [string]$script:TermCommandId
         }) $force
         Add-TermChannel 'TITLE' "$([char]27)]2;$script:TermLocationTitle$([char]7)" $force
-        if ($script:TermReport.Contains('OSC7') -and $script:TermFileUri) {
-            Add-TermChannel 'OSC7' "$([char]27)]7;$script:TermFileUri$([char]7)" $force
-        }
-        if ($script:TermReport.Contains('OSC9_9') -and $cwd -notmatch '[\x00-\x1f\x7f"\x9c]') {
-            Add-TermChannel 'OSC9_9' "$([char]27)]9;9;`"$cwd`"$([char]7)" $force
-        }
+        Add-TermLocationChannels $force
         $script:TermResync = $false
         # One later idle prompt clears transient elapsed time; the persistent value remains.
         $script:TermIdleKey = if ($elapsed) { $null } else { $idleKey }
@@ -324,4 +343,4 @@ function Get-TermLastElapsedMilliseconds {
     return [long]$script:TermLastElapsed
 }
 
-Export-ModuleMember -Function Get-TermPaneTitle, Get-TermCommandName, Sync-TermCommand, Sync-TermPrompt, Complete-TermPrompt, Set-TermReporting, Get-TermLastElapsedMilliseconds
+Export-ModuleMember -Function Get-TermPaneTitle, Get-TermCommandName, Sync-TermCommand, Sync-TermLocation, Sync-TermPrompt, Complete-TermPrompt, Set-TermReporting, Get-TermLastElapsedMilliseconds
