@@ -10,6 +10,9 @@ $script:TermReport = [Collections.Generic.HashSet[string]]::new([StringComparer]
 $script:TermSent = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
 $script:TermEncoded = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
 $script:TermBuilder = [Text.StringBuilder]::new(2048)
+$script:TermPendingSent = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
+$script:TermPendingEncoded = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
+$script:TermPendingClears = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $script:TermUtf8 = [Text.Encoding]::UTF8
 $script:TermSessionId = [guid]::NewGuid().ToString('N')
 $script:TermIdentity = $null
@@ -25,8 +28,9 @@ $script:TermPhase = 'none'
 $script:TermEndPending = $false
 $script:TermIdleKey = $null
 $script:TermLocationKey = $null
-$script:TermLocationValues = $null
+$script:TermLocationSnapshot = $null
 $script:TermResync = $true
+$script:TermLocationResync = $false
 $script:TermConfigVersion = 0
 $script:TermClearFields = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 
@@ -61,6 +65,12 @@ function Set-TermReporting {
         }
         $script:TermReport = $selected
     }
+    # A field re-enabled before its clear was delivered must not be cleared later.
+    foreach ($name in @($script:TermClearFields)) {
+        if ($script:TermReport.Contains('USERVARS') -and $script:TermReport.Contains($name)) {
+            [void]$script:TermClearFields.Remove($name)
+        }
+    }
     if ($Mode) { $script:TermMode = $Mode }
     if ($PSBoundParameters.ContainsKey('FullCommand')) { $script:TermFullCommand = $FullCommand }
     if ($PSBoundParameters.ContainsKey('CommandMaxBytes')) { $script:TermCommandMaxBytes = $CommandMaxBytes }
@@ -86,9 +96,46 @@ function Test-TermOutput {
 
 function Write-TermText {
     param([string]$Text)
-    if (-not $Text) { return }
-    try { [Console]::Write($Text) }
-    catch { $script:TermResync = $true; $script:TermIdleKey = $null }
+    if ($Text) { [Console]::Write($Text) }
+}
+
+function Remove-TermReportingError {
+    param([Management.Automation.ErrorRecord]$Record)
+    # A best-effort reporting failure must not become the submitted command's error.
+    # Remove only this failure, never clear the caller's error history.
+    for ($index = $global:Error.Count - 1; $index -ge 0; $index--) {
+        if ([object]::ReferenceEquals($global:Error[$index], $Record) -or
+            [object]::ReferenceEquals($global:Error[$index].Exception, $Record.Exception)) {
+            $global:Error.RemoveAt($index)
+        }
+    }
+}
+
+function Start-TermFrame {
+    [void]$script:TermBuilder.Clear()
+    $script:TermPendingSent.Clear()
+    $script:TermPendingEncoded.Clear()
+    $script:TermPendingClears.Clear()
+}
+
+function Send-TermFrame {
+    # Cache only what the writer accepted. Partial writes may be retried safely.
+    try { Write-TermText $script:TermBuilder.ToString() }
+    catch {
+        Remove-TermReportingError $_
+        $script:TermResync = $true
+        $script:TermLocationResync = $true
+        $script:TermIdleKey = $null
+        return $false
+    }
+    foreach ($name in $script:TermPendingClears) {
+        [void]$script:TermSent.Remove($name)
+        [void]$script:TermEncoded.Remove($name)
+        [void]$script:TermClearFields.Remove($name)
+    }
+    foreach ($name in $script:TermPendingSent.Keys) { $script:TermSent[$name] = $script:TermPendingSent[$name] }
+    foreach ($name in $script:TermPendingEncoded.Keys) { $script:TermEncoded[$name] = $script:TermPendingEncoded[$name] }
+    return $true
 }
 
 function Add-TermVariables {
@@ -101,20 +148,19 @@ function Add-TermVariables {
         $same = $script:TermSent.TryGetValue($name, [ref]$previous) -and $previous -ceq $value
         if ($same -and -not $Force) { continue }
         if (-not $same) {
-            $script:TermEncoded[$name] = "$([char]27)]1337;SetUserVar=$name=$([Convert]::ToBase64String($script:TermUtf8.GetBytes($value)))$([char]7)"
-            $script:TermSent[$name] = $value
+            $script:TermPendingEncoded[$name] = "$([char]27)]1337;SetUserVar=$name=$([Convert]::ToBase64String($script:TermUtf8.GetBytes($value)))$([char]7)"
+            $script:TermPendingSent[$name] = $value
         }
-        [void]$script:TermBuilder.Append($script:TermEncoded[$name])
+        $encoded = if ($same) { $script:TermEncoded[$name] } else { $script:TermPendingEncoded[$name] }
+        [void]$script:TermBuilder.Append($encoded)
     }
 }
 
 function Clear-TermRemovedFields {
     foreach ($name in $script:TermClearFields) {
         [void]$script:TermBuilder.Append("$([char]27)]1337;SetUserVar=$name=$([char]7)")
-        [void]$script:TermEncoded.Remove($name)
-        [void]$script:TermSent.Remove($name)
+        [void]$script:TermPendingClears.Add($name)
     }
-    $script:TermClearFields.Clear()
 }
 
 function Add-TermChannel {
@@ -122,7 +168,7 @@ function Add-TermChannel {
     if (-not $script:TermReport.Contains($Name)) { return }
     $previous = $null
     if (-not $Force -and $script:TermSent.TryGetValue($Name, [ref]$previous) -and $previous -ceq $Text) { return }
-    $script:TermSent[$Name] = $Text
+    $script:TermPendingSent[$Name] = $Text
     [void]$script:TermBuilder.Append($Text)
 }
 
@@ -147,8 +193,11 @@ function Get-TermCommandName {
 }
 
 function Get-TermPaneTitle {
-    param([AllowEmptyString()][string]$Command = '', [string]$CommandName)
-    $location = $ExecutionContext.SessionState.Path.CurrentLocation.Path
+    param(
+        [AllowEmptyString()][string]$Command = '',
+        [string]$CommandName,
+        [string]$Location = $ExecutionContext.SessionState.Path.CurrentLocation.Path
+    )
     $directory = Get-TermDirectoryLeaf $location
     $name = if ($PSBoundParameters.ContainsKey('CommandName')) { $CommandName } elseif ($Command) { Get-TermCommandName $Command } else { '' }
     $title = if ($name) { "$directory › $name" } else { $directory }
@@ -199,30 +248,35 @@ function Get-TermLocationValues {
     $cwd = $ExecutionContext.SessionState.Path.CurrentFileSystemLocation.ProviderPath
     $location = $ExecutionContext.SessionState.Path.CurrentLocation
     $key = @($cwd, $location.Path, $location.Provider.Name, $HOME, $env:VIRTUAL_ENV) -join [char]0
-    if ($script:TermLocationKey -ceq $key) { return $script:TermLocationValues }
+    if ($script:TermLocationKey -ceq $key) { return $script:TermLocationSnapshot }
     $homeRelative = $cwd
     $homeRoot = $HOME.TrimEnd('\', '/')
     if ($cwd -eq $homeRoot) { $homeRelative = '~' }
     elseif ($cwd.StartsWith($homeRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
         $homeRelative = '~/' + $cwd.Substring($homeRoot.Length + 1).Replace('\', '/')
     }
-    $script:TermLocationValues = [ordered]@{
+    $values = [ordered]@{
         CWD = $cwd; CWD_UNIX = unixpath $cwd; DIR = Get-TermDirectoryLeaf $cwd; CWD_HOME = $homeRelative
         DRIVE = $(if ($cwd -match '^([A-Za-z]):') { $Matches[1].ToUpperInvariant() + ':' } else { '' })
         PROVIDER = $location.Provider.Name; LOCATION = $location.Path
         VENV = $(if ($env:VIRTUAL_ENV) { Get-TermDirectoryLeaf $env:VIRTUAL_ENV } else { '' })
     }
-    $script:TermFileUri = ConvertTo-TermFileUri $cwd
-    $script:TermLocationTitle = Get-TermPaneTitle
+    $script:TermLocationSnapshot = [pscustomobject]@{
+        Key = $key
+        Values = $values
+        FileUri = ConvertTo-TermFileUri $cwd
+        Title = Get-TermPaneTitle -Location $location.Path
+    }
     $script:TermLocationKey = $key
-    return $script:TermLocationValues
+    return $script:TermLocationSnapshot
 }
 
-function Add-TermLocationChannels {
-    param([bool]$Force = $false)
-    $cwd = $ExecutionContext.SessionState.Path.CurrentFileSystemLocation.ProviderPath
-    if ($script:TermFileUri) {
-        Add-TermChannel 'OSC7' "$([char]27)]7;$script:TermFileUri$([char]7)" $Force
+function Add-TermLocationReport {
+    param($Snapshot, [bool]$Force = $false)
+    Add-TermVariables $Snapshot.Values $Force
+    $cwd = $Snapshot.Values.CWD
+    if ($Snapshot.FileUri) {
+        Add-TermChannel 'OSC7' "$([char]27)]7;$($Snapshot.FileUri)$([char]7)" $Force
     }
     if ($cwd -notmatch '[\x00-\x1f\x7f"\x9c]') {
         Add-TermChannel 'OSC9_9' "$([char]27)]9;9;`"$cwd`"$([char]7)" $Force
@@ -232,13 +286,19 @@ function Add-TermLocationChannels {
 function Sync-TermLocation {
     # A directory can change before a long-running foreground command starts.
     # Update location only: do not invent prompt or command-completion events.
-    if (-not (Test-TermOutput)) { $script:TermResync = $true; return }
     $nativeExitCode = $global:LASTEXITCODE
     try {
-        [void]$script:TermBuilder.Clear()
-        Add-TermVariables (Get-TermLocationValues)
-        Add-TermLocationChannels
-        Write-TermText $script:TermBuilder.ToString()
+        if (-not (Test-TermOutput)) { $script:TermResync = $true; return }
+        $snapshot = Get-TermLocationValues
+        Start-TermFrame
+        Clear-TermRemovedFields
+        Add-TermLocationReport $snapshot $script:TermLocationResync
+        if (Send-TermFrame) { $script:TermLocationResync = $false }
+    } catch {
+        # Reporting is best-effort: never turn a successful cd into a failure.
+        Remove-TermReportingError $_
+        $script:TermResync = $true
+        $script:TermIdleKey = $null
     } finally { $global:LASTEXITCODE = $nativeExitCode }
 }
 
@@ -249,7 +309,7 @@ function Sync-TermCommand {
     $script:TermRunningName = Get-TermCommandName $Command
     $script:TermIdleKey = $null
     if (-not (Test-TermOutput)) { $script:TermResync = $true; return }
-    [void]$script:TermBuilder.Clear()
+    Start-TermFrame
     Clear-TermRemovedFields
     $text = ''
     if ($script:TermFullCommand -and $script:TermCommandMaxBytes -gt 0) {
@@ -267,15 +327,16 @@ function Sync-TermCommand {
         [void]$script:TermBuilder.Append("$([char]27)]133;C$([char]7)")
         $script:TermPhase = 'running'
     }
-    Write-TermText $script:TermBuilder.ToString()
+    $null = Send-TermFrame
 }
 
 function Complete-TermPrompt {
     if (-not $script:TermEndPending) { return }
     $script:TermEndPending = $false
     if ((Test-TermOutput) -and $script:TermReport.Contains('OSC133')) {
-        Write-TermText "$([char]27)]133;B$([char]7)"
-        $script:TermPhase = 'input'
+        Start-TermFrame
+        [void]$script:TermBuilder.Append("$([char]27)]133;B$([char]7)")
+        if (Send-TermFrame) { $script:TermPhase = 'input' }
     }
 }
 
@@ -300,10 +361,9 @@ function Sync-TermPrompt {
         $script:TermCommandStarted = $null
     }
     if (-not (Test-TermOutput)) { $script:TermResync = $true; $script:TermEndPending = $false; return }
-    $location = $ExecutionContext.SessionState.Path.CurrentLocation
-    $cwd = $ExecutionContext.SessionState.Path.CurrentFileSystemLocation.ProviderPath
-    $idleKey = @($cwd, $location.Path, $location.Provider.Name, $HOME, $env:VIRTUAL_ENV, $Succeeded, $effectiveExit, [string]$ExitCode, [string]$NativeExitCode, $Status, $script:TermConfigVersion) -join [char]0
-    [void]$script:TermBuilder.Clear()
+    $snapshot = Get-TermLocationValues
+    $idleKey = @($snapshot.Key, $Succeeded, $effectiveExit, [string]$ExitCode, [string]$NativeExitCode, $Status, $script:TermConfigVersion) -join [char]0
+    Start-TermFrame
     Clear-TermRemovedFields
     if ($script:TermReport.Contains('OSC133')) {
         if ($CommandCompleted) {
@@ -321,21 +381,22 @@ function Sync-TermPrompt {
         if ($script:TermReport.Contains('USERVARS')) {
             Add-TermVariables (Get-TermIdentity) $force
         }
-        Add-TermVariables (Get-TermLocationValues) $force
+        Add-TermLocationReport $snapshot $force
         Add-TermVariables ([ordered]@{
             BUSY = '0'; COMMAND = ''; CMD = ''; OK = $(if ($Succeeded) { '1' } else { '0' })
             EXIT = $effectiveExit; STATUS = $(if ($Status) { $Status } elseif ($Succeeded) { 'success' } else { 'error' })
             ELAPSED_MS = $elapsed; LAST_CMD = $script:TermLastName; LAST_ELAPSED_MS = $script:TermLastElapsed
             LAST_NATIVE_EXIT = [string]$NativeExitCode; COMMAND_ID = [string]$script:TermCommandId
         }) $force
-        Add-TermChannel 'TITLE' "$([char]27)]2;$script:TermLocationTitle$([char]7)" $force
-        Add-TermLocationChannels $force
+        Add-TermChannel 'TITLE' "$([char]27)]2;$($snapshot.Title)$([char]7)" $force
+    }
+    if (Send-TermFrame) {
+        $script:TermLocationResync = $false
         $script:TermResync = $false
         # One later idle prompt clears transient elapsed time; the persistent value remains.
         $script:TermIdleKey = if ($elapsed) { $null } else { $idleKey }
-    }
-    Write-TermText $script:TermBuilder.ToString()
-    if (-not $DeferEnd) { Complete-TermPrompt }
+        if (-not $DeferEnd) { Complete-TermPrompt }
+    } else { $script:TermEndPending = $false }
 }
 
 function Get-TermLastElapsedMilliseconds {

@@ -236,6 +236,127 @@ Test-Term 'immediate location sync respects channel selection and provider paths
         if ($wire.Contains(']7;') -or $wire.Contains(']9;9;')) { throw 'disabled cwd channel emitted' }
     } finally { Set-Location -LiteralPath $original }
 }
+Test-Term 'metadata failure never aborts successful cd and the next prompt resynchronizes' {
+    $original = (Get-Location).Path
+    $target = Join-Path $HOME 'metadata failure'
+    [IO.Directory]::CreateDirectory($target) | Out-Null
+    $saved = & $term { (Get-Command Get-TermLocationValues).ScriptBlock }
+    try {
+        $null = Capture { Sync-TermPrompt -CommandCompleted:$false }
+        & $term { function script:Get-TermLocationValues { throw 'injected metadata failure' } }
+        $global:LASTEXITCODE = 23
+        $errorBefore = $global:Error[0]
+        $errorCount = $global:Error.Count
+        $wire = Capture { cd (unixpath $target); $script:MetadataContinued = $true }
+        Assert-Equal $wire ''
+        Assert-Equal $script:MetadataContinued $true
+        Assert-Equal $global:Error.Count $errorCount
+        Assert-Equal ([object]::ReferenceEquals($global:Error[0], $errorBefore)) $true
+        Assert-Equal (Get-Location).ProviderPath $target
+        Assert-Equal $global:LASTEXITCODE 23
+        Assert-Equal (& $term { $script:TermResync }) $true
+        & $term { param($body) Set-Item Function:script:Get-TermLocationValues $body } $saved
+        $wire = Capture { Sync-TermPrompt -CommandCompleted:$false }
+        Assert-Equal (Variables $wire).CWD $target
+    } finally {
+        & $term { param($body) Set-Item Function:script:Get-TermLocationValues $body } $saved
+        Set-Location -LiteralPath $original
+        Remove-Item -LiteralPath $target -Force
+        $global:LASTEXITCODE = 0
+    }
+}
+Test-Term 'failed write does not commit directory channels or fields and retries at the same location' {
+    $original = (Get-Location).Path
+    $target = Join-Path $HOME 'write failure'
+    [IO.Directory]::CreateDirectory($target) | Out-Null
+    $saved = & $term { (Get-Command Write-TermText).ScriptBlock }
+    try {
+        $null = Capture { Sync-TermPrompt -CommandCompleted:$false }
+        $before = & $term { @($script:TermSent['CWD'], $script:TermSent['OSC7']) }
+        & $term { function script:Write-TermText { param($Text) throw [IO.IOException]::new('injected write failure') } }
+        $global:LASTEXITCODE = 31
+        $errorBefore = $global:Error[0]
+        $errorCount = $global:Error.Count
+        $wire = Capture { cd (unixpath $target) }
+        Assert-Equal $wire ''
+        Assert-Equal (Get-Location).ProviderPath $target
+        Assert-Equal $global:LASTEXITCODE 31
+        Assert-Equal $global:Error.Count $errorCount
+        Assert-Equal ([object]::ReferenceEquals($global:Error[0], $errorBefore)) $true
+        $after = & $term { @($script:TermSent['CWD'], $script:TermSent['OSC7']) }
+        Assert-Equal ($after -join '|') ($before -join '|')
+        & $term { param($body) Set-Item Function:script:Write-TermText $body } $saved
+        $wire = Capture { Sync-TermLocation }
+        Assert-Equal (Variables $wire).CWD $target
+        if (-not $wire.Contains(']7;file://')) { throw 'unchanged location did not retry failed channel' }
+        Assert-Equal (Capture { Sync-TermLocation }) ''
+    } finally {
+        & $term { param($body) Set-Item Function:script:Write-TermText $body } $saved
+        Set-Location -LiteralPath $original
+        Remove-Item -LiteralPath $target -Force
+        $global:LASTEXITCODE = 0
+    }
+}
+Test-Term 'field clears remain pending on failed output and commit only on retry' {
+    Set-TermReporting -Fields @('USERVARS','CWD')
+    $null = Capture { Sync-TermLocation }
+    $saved = & $term { (Get-Command Write-TermText).ScriptBlock }
+    try {
+        Set-TermReporting -Fields @('OSC7')
+        & $term { function script:Write-TermText { param($Text) throw [IO.IOException]::new('injected clear failure') } }
+        $null = Capture { Sync-TermLocation }
+        Assert-Equal (& $term { $script:TermClearFields.Contains('CWD') }) $true
+        Assert-Equal (& $term { $script:TermSent.ContainsKey('CWD') }) $true
+        & $term { param($body) Set-Item Function:script:Write-TermText $body } $saved
+        $wire = Capture { Sync-TermLocation }
+        if (-not $wire.Contains("]1337;SetUserVar=CWD=$([char]7)")) { throw 'field clear was lost on failed output' }
+        Assert-Equal (& $term { $script:TermClearFields.Contains('CWD') }) $false
+        Assert-Equal (& $term { $script:TermSent.ContainsKey('CWD') }) $false
+        if ((Capture { Sync-TermLocation }).Contains('SetUserVar=CWD=')) { throw 'successful clear was resent' }
+    } finally { & $term { param($body) Set-Item Function:script:Write-TermText $body } $saved }
+}
+Test-Term 'a partially written frame forces even previously unchanged location data to resend' {
+    Set-TermReporting -Fields @('USERVARS','CWD','OSC7')
+    $null = Capture { Sync-TermLocation }
+    $saved = & $term { (Get-Command Write-TermText).ScriptBlock }
+    try {
+        # A device may accept a prefix before throwing. The shell cannot know which
+        # sequences arrived, so the next location frame must resend its snapshot.
+        Set-TermReporting -Fields @('OSC7')
+        & $term { function script:Write-TermText { param($Text) [Console]::Write($Text); throw [IO.IOException]::new('partial output') } }
+        $wire = Capture { Sync-TermLocation }
+        if (-not $wire.Contains('SetUserVar=CWD=')) { throw 'partial-clear fixture did not write' }
+        Set-TermReporting -Fields @('USERVARS','CWD','OSC7')
+        & $term { param($body) Set-Item Function:script:Write-TermText $body } $saved
+        $wire = Capture { Sync-TermLocation }
+        Assert-Equal (Variables $wire).CWD (Get-Location).ProviderPath
+        if (-not $wire.Contains(']7;file://')) { throw 'partial output did not force channel resync' }
+    } finally { & $term { param($body) Set-Item Function:script:Write-TermText $body } $saved }
+}
+Test-Term 're-enabling a field cancels its undelivered clear' {
+    Set-TermReporting -Fields @('USERVARS','CWD')
+    $null = Capture { Sync-TermLocation }
+    Set-TermReporting -Fields @('OSC7')
+    Assert-Equal (& $term { $script:TermClearFields.Contains('CWD') }) $true
+    Set-TermReporting -Fields @('USERVARS','CWD')
+    $wire = Capture { Sync-TermLocation }
+    if ($wire.Contains("]1337;SetUserVar=CWD=$([char]7)")) { throw 're-enabled field was incorrectly cleared' }
+    Assert-Equal (& $term { $script:TermSent.ContainsKey('CWD') }) $true
+}
+Test-Term 'prompt write failure keeps resync pending until a successful snapshot' {
+    $saved = & $term { (Get-Command Write-TermText).ScriptBlock }
+    try {
+        & $term { function script:Write-TermText { param($Text) throw [IO.IOException]::new('injected prompt failure') } }
+        $wire = Capture { Sync-TermPrompt -CommandCompleted:$false }
+        Assert-Equal $wire ''
+        Assert-Equal (& $term { $script:TermResync }) $true
+        Assert-Equal (& $term { $script:TermIdleKey }) $null
+        & $term { param($body) Set-Item Function:script:Write-TermText $body } $saved
+        $wire = Capture { Sync-TermPrompt -CommandCompleted:$false }
+        if (-not (Variables $wire).ContainsKey('CWD')) { throw 'prompt did not resend the full snapshot' }
+        Assert-Equal (& $term { $script:TermResync }) $false
+    } finally { & $term { param($body) Set-Item Function:script:Write-TermText $body } $saved }
+}
 Test-Term 'no command label invents an executable from an expression' {
     Assert-Equal (Get-TermCommandName '$null = 1') ''
     Assert-Equal (Get-TermCommandName '"text"') ''
