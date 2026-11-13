@@ -49,9 +49,9 @@ exit 0
         } else {
             if ($result.Text -notmatch 'Source\s+I:\\fixture\\source' -or $result.Text -notmatch 'Open a new PowerShell window') { throw $result.Text }
             $settingsPath = Join-Path $userHome '.config/upwsh/user-settings.ps1'
-            if ($result.Text -notmatch ('UserSettings\s+' + [regex]::Escape($settingsPath))) { throw 'missing personal settings path' }
-            foreach ($label in @('Source','Home','Profile','UserSettings')) {
-                if ($result.Text -notmatch ('(?m)^  ' + $label + '\s{' + (14 - $label.Length) + '}\S')) { throw "misaligned label $label" }
+            if ($result.Text -notmatch ('Settings\s+' + [regex]::Escape($settingsPath))) { throw 'missing personal settings path' }
+            foreach ($label in @('Source','Home','Profile','Settings')) {
+                if ($result.Text -notmatch ('(?m)^  ' + $label + '\s{' + (10 - $label.Length) + '}\S')) { throw "misaligned label $label" }
             }
         }
         if ($result.Text -notmatch ('(?m)^  upwsh ' + $verb + ' ✓\r?$')) { throw 'success line indentation changed' }
@@ -75,6 +75,23 @@ exit 0
     $result = Invoke-UpwshTestProcess -UserHome (Join-Path $root failure) -Command ('& ' + (ConvertTo-TestLiteral (Join-Path $fixture 'script/upwsh.ps1')) + ' install; exit $LASTEXITCODE') -Environment @{ UPWSH_OUTPUT_TEST_FAIL = '1' }
     if ($result.Code -ne 7 -or $result.Text -notmatch 'fixture operation failed' -or $result.Text -match '✓') { throw "failed action misreported: $($result.Text)" }
     $passed++
+    # Verify the palette directly; subprocess captures above must remain ANSI-free.
+    $tokens = $null; $errors = $null
+    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $fixture 'script/upwsh.ps1'), [ref]$tokens, [ref]$errors)
+    $formatter = $ast.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Write-UpwshSetupSummary' }, $true)
+    Invoke-Expression $formatter.Extent.Text
+    $rendering = $PSStyle.OutputRendering
+    try {
+        $PSStyle.OutputRendering = 'Ansi'
+        $colored = @(Write-UpwshSetupSummary -Command install -SetupOutput @('source    I:\fixture\source') -Loaded:$true -HomePath 'C:\fixture\home' -HookPath 'C:\fixture\profile.ps1' -Color:$true)
+        foreach ($label in @('Source','Home','Profile','Settings')) {
+            $expected = '  ' + $PSStyle.Foreground.Green + ('{0,-8}' -f $label) + $PSStyle.Reset + '  '
+            if (-not @($colored | Where-Object { $_.StartsWith($expected) }).Count) { throw "missing project green label: $label" }
+        }
+        if ('  ' + $PSStyle.Foreground.Green + 'upwsh installed ✓' + $PSStyle.Reset -cnotin $colored) { throw 'success line did not use project green' }
+        if ('  Ready in this shell.' -cnotin $colored -or '  Run upwsh --help to get started.' -cnotin $colored) { throw 'footer was unexpectedly styled' }
+        $passed++
+    } finally { $PSStyle.OutputRendering = $rendering }
     $result = Invoke-UpwshTestProcess -UserHome (Join-Path $root help) -Command ('& ' + (ConvertTo-TestLiteral (Join-Path $fixture 'script/upwsh.ps1')) + ' install --help')
     if ($result.Code -ne 0 -or $result.Text -notmatch 'fixture help' -or $result.Text -match '✓') { throw 'help was summarized as success' }
     $passed++
