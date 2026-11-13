@@ -412,6 +412,51 @@ function Invoke-UpwshEdit {
     }
 }
 
+function Write-UpwshSetupSummary {
+    param([string]$Command, [string[]]$SetupOutput, [bool]$Loaded, [string]$HomePath, [string]$HookPath, [bool]$Color)
+    $sourcePath = ''
+    $kept = [Collections.Generic.List[string]]::new()
+    $notices = [Collections.Generic.List[string]]::new()
+    foreach ($line in $SetupOutput) {
+        $plain = $line -replace '\x1b\[[0-9;]*m', ''
+        if ($plain -match '^source\s+(.+)$') { $sourcePath = $Matches[1] }
+        elseif ($plain -match '^profile\s+(.+)$') { $hookPath = $Matches[1] }
+        elseif ($plain -match '^keep\s+(.+)$') { if (-not $kept.Contains($Matches[1])) { $kept.Add($Matches[1]) } }
+        elseif ($plain -match '^(missing|next|warn)\s+(.+)$') { $notices.Add($plain) }
+        elseif ($plain -match '^tree\s+kept\s+(.+)$') { if (-not $kept.Contains($Matches[1])) { $kept.Add($Matches[1]) } }
+        elseif ($plain -and $plain -notmatch '^(home|target|state|cmd|command|relaunch|tree)\s+') { $notices.Add($plain) }
+    }
+    $result = switch ($Command) { 'install' { 'installed' } 'update' { 'updated' } 'uninstall' { 'uninstalled' } }
+    $heading = "✓ upwsh $result"
+    if ($color) { $heading = "$($PSStyle.Foreground.Green)$heading$($PSStyle.Reset)" }
+    Write-Output ''
+    Write-Output $heading
+    Write-Output ''
+    $details = [ordered]@{}
+    if ($sourcePath -and $Command -ne 'uninstall') { $details.Source = $sourcePath }
+    $details.Home = $homePath
+    $details.Profile = $hookPath
+    foreach ($label in $details.Keys) {
+        $prefix = '{0,-7}' -f $label
+        if ($color) { $prefix = "$($PSStyle.Foreground.BrightBlack)$prefix$($PSStyle.Reset)" }
+        Write-Output "  $prefix  $($details[$label])"
+    }
+    foreach ($path in $kept) { Write-Output "  Kept     $path" }
+    Write-Output ''
+    if ($Command -eq 'uninstall') {
+        Write-Output '  Restart your shell to clear any remaining session state.'
+    } elseif ($Loaded) {
+        Write-Output '  Ready in this shell.'
+    } else {
+        Write-Output '  Open a new PowerShell window to load upwsh.'
+    }
+    if ($notices.Count) {
+        Write-Output ''
+        foreach ($notice in $notices) { Write-Output "  $notice" }
+    }
+    Write-Output ''
+}
+
 function Invoke-UpwshSetup {
     param($Parsed)
 
@@ -496,10 +541,40 @@ if ($parsed.Command -in @('load', 'unload')) {
 }
 
 if ($parsed.Command -in @('install', 'uninstall', 'update')) {
-    Invoke-UpwshSetup -Parsed $parsed
+    # Help/check output remains diagnostic; summarize only a completed lifecycle action.
+    $diagnostic = @($parsed.Rest | Where-Object { $_ -in @('--help','-h','--check','-c') }).Count -gt 0
+    if ($diagnostic) {
+        Invoke-UpwshSetup -Parsed $parsed
+        Complete-Upwsh $global:LASTEXITCODE $scriptInvocation
+        return
+    }
+    $setupOutput = @(Invoke-UpwshSetup -Parsed $parsed 6>&1 | ForEach-Object { [string]$_ })
     $setupCode = $global:LASTEXITCODE
-    Complete-Upwsh $setupCode $scriptInvocation
-    Invoke-UpwshPostSetup -Command $parsed.Command -Code $setupCode
+    if ($setupCode -ne 0) {
+        $setupOutput | Write-Output
+        Complete-Upwsh $setupCode $scriptInvocation
+        return
+    }
+    # Capture helpers before teardown/reload replaces their defining session state.
+    $summary = ${function:Write-UpwshSetupSummary}
+    $summaryColor = Test-UpwshStatusColor
+    $summaryHome = Get-UpwshHome
+    $summaryProfile = if ($env:UPWSH_PROFILE) { [IO.Path]::GetFullPath((winpath $env:UPWSH_PROFILE)) } else { $PROFILE.CurrentUserAllHosts }
+    $setupCommand = $parsed.Command
+    $loaded = -not [bool]$env:UPWSH_SKIP_SESSION_LOAD
+    try {
+        $postOutput = @(Invoke-UpwshPostSetup -Command $setupCommand -Code $setupCode | ForEach-Object { [string]$_ })
+    } catch {
+        $setupOutput | Write-Output
+        Write-Output "upwsh: $($_.Exception.Message)"
+        $global:LASTEXITCODE = 1
+        if ($PSCommandPath -and $scriptInvocation.CommandOrigin -eq 'Runspace') { exit 1 }
+        return
+    }
+    & $summary -Command $setupCommand -SetupOutput @($setupOutput + $postOutput) -Loaded:$loaded `
+        -HomePath $summaryHome -HookPath $summaryProfile -Color:$summaryColor
+    $global:LASTEXITCODE = 0
+    if ($PSCommandPath -and $scriptInvocation.CommandOrigin -eq 'Runspace') { exit 0 }
     return
 }
 

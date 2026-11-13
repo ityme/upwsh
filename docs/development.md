@@ -22,6 +22,7 @@ pwsh -NoLogo -NoProfile -File tests/test_interaction.ps1
 pwsh -NoLogo -NoProfile -File tests/test_install_profile.ps1
 pwsh -NoLogo -NoProfile -File tests/test_upwsh.ps1
 pwsh -NoLogo -NoProfile -File tests/test_edit_reload.ps1
+pwsh -NoLogo -NoProfile -File tests/test_setup_output.ps1
 pwsh -NoLogo -NoProfile -File tests/test_session_cleanup.ps1
 pwsh -NoLogo -NoProfile -File tests/test_install.ps1
 pwsh -NoLogo -NoProfile -File tests/test_deploy_locks.ps1
@@ -32,6 +33,8 @@ The test harness uses temporary user homes and profiles and disables persistent 
 The public `upwsh` function is created from an unbound script block containing a quoted absolute entry path. It must not retain `upwsh.psm1` session state: lifecycle commands force-reload that module while their calling command is still running. `test_edit_reload.ps1` reproduces the first install's module-import/load sequence and repeated edits in the same process, without running the installer or a real editor.
 
 `session.psm1` retains immutable function/alias snapshots across profile reloads. Unload restores only definitions still owned by upwsh (including personal CommandMap shortcuts), preserving later user overrides; uninstall also removes the managed upwsh entry. PSReadLine options and built-in key bindings are restored when unchanged. Pre-existing custom key scripts are left untouched because PSReadLine does not expose them for reliable restoration. Direct uninstall defers teardown until disk work and status output finish. This does not undo arbitrary side effects executed by user-settings.ps1.
+
+Lifecycle result output from `upwsh install|update|uninstall` is summarized only after successful setup and session work. Internal deployment/shim/relaunch lines are omitted from the success card; warnings, missing-tool hints, unknown diagnostics and kept paths remain visible. Failed actions keep their diagnostic output and nonzero exit status. Help/check output and direct standalone scripts retain their existing diagnostic format. Uninstall recommends a shell restart to clear possible residual session state. `test_setup_output.ps1` uses stub entry scripts and does not install or remove a runtime.
 
 ## Deployment
 
