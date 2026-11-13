@@ -31,6 +31,12 @@
 irm https://github.com/ityme/upwsh/raw/main/src/script/install.ps1 | iex
 ```
 
+安装脚本 URL 的分支只决定脚本版本，不会自动指定安装分支。默认安装最新 release，未获取到 release 时回退到 `main`。首次安装 `dev` 请显式传参：
+
+```powershell
+& ([scriptblock]::Create((irm https://github.com/ityme/upwsh/raw/dev/src/script/install.ps1))) --ref dev
+```
+
 安装位置为 `~/.config/upwsh`，会把 `upwsh` 加入 Path，在当前 pwsh 中定义 `upwsh` 命令，并加载 profile。若缺少 `eza`、`dust` 或 `btm`，安装结束会提示：
 
 ```text

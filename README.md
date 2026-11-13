@@ -38,6 +38,12 @@ missing   eza, dust, btm
 next      upwsh tool install eza dust btm
 ```
 
+The installer URL selects the script version, not the runtime branch. Installation defaults to the latest release, falling back to `main` if release discovery fails. To install `dev` explicitly:
+
+```powershell
+& ([scriptblock]::Create((irm https://github.com/ityme/upwsh/raw/dev/src/script/install.ps1))) --ref dev
+```
+
 ## Try it
 
 ```powershell

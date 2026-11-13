@@ -422,7 +422,7 @@ function Get-DownloadedRuntime {
         [pscustomobject]@{
             Root = (Resolve-RuntimeRoot $extract)
             Work = $work
-            SourceLabel = "$Repo@$script:DownloadedRevision"
+            SourceLabel = "https://github.com/$Repo@$script:DownloadedRevision"
         }
     } catch {
         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue

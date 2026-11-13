@@ -53,6 +53,7 @@ exit 0
         $code = '& ' + (ConvertTo-TestLiteral (Join-Path $fixture 'script/upwsh.ps1')) + " $command$flags"
         $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $code
         if ($result.Code -ne 0) { throw $result.Text }
+        if ($result.Text -match '^\s*\r?\n') { throw 'summary starts with an unnecessary blank line' }
         $verb = switch ($command) { install { 'installed' } update { 'updated' } uninstall { 'uninstalled' } }
         if ($result.Text -notmatch [regex]::Escape("upwsh $verb ✓")) { throw "missing success heading: $($result.Text)" }
         if ($result.Text -notmatch 'Home\s+' -or $result.Text -notmatch 'Profile\s+') { throw 'missing result details' }
@@ -130,6 +131,7 @@ exit 0
     try {
         $PSStyle.OutputRendering = 'Ansi'
         $colored = @(Write-UpwshSetupSummary -Command install -SetupOutput @('source    I:\fixture\source') -Loaded:$true -HomePath 'C:\fixture\home' -HookPath 'C:\fixture\profile.ps1' -Color:$true -Before @{ SettingsExists = $true } -After @{})
+        if ([string]::IsNullOrWhiteSpace($colored[0])) { throw 'colored summary starts with a blank line' }
         foreach ($label in @('Source','Home','Profile','Settings')) {
             $expected = '  ' + $PSStyle.Foreground.Green + ('{0,-8}' -f $label) + $PSStyle.Reset + '  '
             if (-not @($colored | Where-Object { $_.StartsWith($expected) }).Count) { throw "missing project green label: $label" }

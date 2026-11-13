@@ -20,7 +20,6 @@ function Write-UpwshSetupSummary {
     $result = switch ($Command) { 'install' { 'installed' } 'update' { 'updated' } 'uninstall' { 'uninstalled' } }
     $heading = "upwsh $result ✓"
     if ($color) { $heading = "$($PSStyle.Foreground.Green)$heading$($PSStyle.Reset)" }
-    Write-Output ''
     $settingsPath = Join-Path $homePath 'user-settings.ps1'
     $rows = [Collections.Generic.List[object]]::new()
     if ($sourcePath -and $Command -ne 'uninstall') {
