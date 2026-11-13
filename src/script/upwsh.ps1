@@ -430,8 +430,6 @@ function Write-UpwshSetupSummary {
     $heading = "✓ upwsh $result"
     if ($color) { $heading = "$($PSStyle.Foreground.Green)$heading$($PSStyle.Reset)" }
     Write-Output ''
-    Write-Output $heading
-    Write-Output ''
     $details = [ordered]@{}
     if ($sourcePath -and $Command -ne 'uninstall') { $details.Source = $sourcePath }
     $details.Home = $homePath
@@ -442,7 +440,12 @@ function Write-UpwshSetupSummary {
         Write-Output "  $prefix  $($details[$label])"
     }
     foreach ($path in $kept) { Write-Output "  Kept     $path" }
+    if ($notices.Count) {
+        Write-Output ''
+        foreach ($notice in $notices) { Write-Output "  $notice" }
+    }
     Write-Output ''
+    Write-Output $heading
     if ($Command -eq 'uninstall') {
         Write-Output '  Restart your shell to clear any remaining session state.'
     } elseif ($Loaded) {
@@ -450,9 +453,8 @@ function Write-UpwshSetupSummary {
     } else {
         Write-Output '  Open a new PowerShell window to load upwsh.'
     }
-    if ($notices.Count) {
-        Write-Output ''
-        foreach ($notice in $notices) { Write-Output "  $notice" }
+    if ($Command -eq 'install') {
+        Write-Output '  Run upwsh --help to get started.'
     }
     Write-Output ''
 }
