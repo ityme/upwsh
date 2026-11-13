@@ -146,10 +146,10 @@ try {
         Assert-Equal $result.Code 0
         Assert-Contains $result.Text 'install and manage upwsh'
         Assert-Contains $result.Text '[--local | --remote | --source <dir>]'
-        Assert-Contains $result.Text '[--ref <ref>] [--repo <owner/name>]'
+        Assert-True ($result.Text -notmatch '--ref|--repo') 'help advertises unsupported remote selection'
         Assert-Contains $result.Text 'examples:'
         Assert-Contains $result.Text 'upwsh install --local'
-        Assert-Contains $result.Text 'upwsh install --remote --ref dev'
+        Assert-Contains $result.Text 'Install main from ityme/upwsh'
         Assert-Contains $result.Text 'upwsh theme use colorful-blue'
     }
 

@@ -185,8 +185,8 @@ exit $LASTEXITCODE
         Assert-True ($result.Code -eq 0) $result.Text
         Assert-Contains $result.Text '/archive/refs/heads/main.zip'
         $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $command.Replace('OPTIONS', '--ref dev') -WorkingDirectory $project
-        Assert-True ($result.Code -eq 0) $result.Text
-        Assert-Contains $result.Text '/archive/refs/heads/dev.zip'
+        Assert-Equal $result.Code 2
+        Assert-Contains $result.Text 'unknown option: --ref'
     }
 
     Invoke-InstallTest 'installed runtime is rejected as an explicit copy source' {
@@ -257,7 +257,7 @@ exit $LASTEXITCODE
         Assert-Equal $result.Code 1
         $command = @'
 function Invoke-WebRequest { throw 'offline fixture' }
-& UPDATER --ref test
+& UPDATER --remote
 exit $LASTEXITCODE
 '@
         $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $command.Replace('UPDATER', (ConvertTo-TestLiteral $updater))

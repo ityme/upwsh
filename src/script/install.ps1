@@ -5,8 +5,6 @@
 $script:SavedErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 $script:Arguments = @($args)
-$script:DefaultRepo = 'ityme/upwsh'
-$script:DefaultRef = 'main'
 $script:UserAgent = 'upwsh-installer'
 $script:UpdateOnly = $UpwshSetupMode -eq 'update'
 
@@ -14,16 +12,13 @@ function Get-InstallUsage {
     @'
 usage: install.ps1 [-h | --help] [-c | --check]
                    [--local | --remote] [--source <dir>]
-                   [--ref <ref>] [--repo <owner/name>]
 
 These are common install.ps1 commands used in various situations:
 
 install this runtime
    --local          Use the local project at the current directory or script location
-   --remote         Download the runtime; default for irm | iex
+   --remote         Download ityme/upwsh main; default for irm | iex
    --source         Local source tree, skip download
-   --ref            Git branch or tag to download
-   --repo           GitHub repository, default ityme/upwsh
 
 inspect without writing
    --check          Show installation status without copying files
@@ -32,7 +27,7 @@ A network install can run:
 
   irm https://github.com/ityme/upwsh/raw/main/src/script/install.ps1 | iex
 
-Environment: UPWSH_REF UPWSH_REPO UPWSH_SOURCE
+Environment: UPWSH_SOURCE (local source only)
 Install or repair ~/.config/upwsh. UPWSH_HOME records this fixed location.
 Install then loads the current pwsh. Install and update default to --remote; use --local for a project source.
 The upwsh command is UPWSH_HOME\\bin\\upwsh.cmd.
@@ -48,8 +43,6 @@ function New-InstallParseResult {
         Check  = $false
         Local  = $false
         Remote = $false
-        Ref    = $null
-        Repo   = $null
         Source   = $null
         SkipLoad = $false
     }
@@ -84,24 +77,6 @@ function ConvertFrom-InstallArguments {
                 $result.Remote = $true
                 $index++
             }
-            '^--ref$' {
-                if ($index + 1 -ge $tokens.Count) {
-                    $result.Help = $true
-                    $result.Error = 'missing ref'
-                    return $result
-                }
-                $result.Ref = [string]$tokens[$index + 1]
-                $index += 2
-            }
-            '^--repo$' {
-                if ($index + 1 -ge $tokens.Count) {
-                    $result.Help = $true
-                    $result.Error = 'missing repo'
-                    return $result
-                }
-                $result.Repo = [string]$tokens[$index + 1]
-                $index += 2
-            }
             '^--source$' {
                 if ($index + 1 -ge $tokens.Count) {
                     $result.Help = $true
@@ -130,10 +105,6 @@ function ConvertFrom-InstallArguments {
     if ($result.Remote -and $result.Source) {
         $result.Help = $true
         $result.Error = 'use only one of --remote or --source'
-    }
-    if ($result.Local -and ($result.Ref -or $result.Repo)) {
-        $result.Help = $true
-        $result.Error = '--local cannot be used with --ref or --repo'
     }
 
     return $result
@@ -329,41 +300,6 @@ function Get-LocalProjectRuntimeRoot {
     return $null
 }
 
-function Get-GitHubHeaders {
-    @{
-        'User-Agent' = $script:UserAgent
-        Accept       = 'application/vnd.github+json'
-    }
-}
-
-function Get-LatestReleaseZipUri {
-    param([string]$Repo)
-
-    $release = Invoke-RestMethod `
-        -Uri "https://api.github.com/repos/$Repo/releases/latest" `
-        -Headers (Get-GitHubHeaders)
-    $asset = @(
-        $release.assets |
-            Where-Object { $_.name -like '*.zip' -and $_.browser_download_url }
-    )[0]
-    if (-not $asset) {
-        throw "release has no zip: $Repo"
-    }
-    $script:DownloadedRevision = $release.tag_name
-    $asset.browser_download_url
-}
-
-function Get-ArchiveZipUri {
-    param([string]$Repo, [string]$Ref)
-
-    $encoded = [uri]::EscapeDataString($Ref)
-    if ($Ref -match '^v\d' -or $Ref -like 'refs/tags/*') {
-        $tag = $Ref -replace '^refs/tags/', ''
-        return "https://github.com/$Repo/archive/refs/tags/$([uri]::EscapeDataString($tag)).zip"
-    }
-    "https://github.com/$Repo/archive/refs/heads/$encoded.zip"
-}
-
 function Save-Uri {
     param([string]$Uri, [string]$Path)
 
@@ -376,11 +312,6 @@ function Save-Uri {
 }
 
 function Get-DownloadedRuntime {
-    param(
-        [string]$Repo,
-        [string]$Ref
-    )
-
     $work = Join-Path ([IO.Path]::GetTempPath()) (
         'upwsh-' + [Guid]::NewGuid().ToString('N')
     )
@@ -390,39 +321,13 @@ function Get-DownloadedRuntime {
         $extract = Join-Path $work 'extract'
         New-Item -ItemType Directory -Path $extract -Force | Out-Null
 
-        $uris = [Collections.Generic.List[string]]::new()
-        if ($Ref) {
-            $script:DownloadedRevision = $Ref
-            $uris.Add((Get-ArchiveZipUri -Repo $Repo -Ref $Ref)) | Out-Null
-        } else {
-            try {
-                $uris.Add((Get-LatestReleaseZipUri -Repo $Repo)) | Out-Null
-            } catch {
-                $script:DownloadedRevision = $script:DefaultRef
-                $uris.Add((Get-ArchiveZipUri -Repo $Repo -Ref $script:DefaultRef)) | Out-Null
-            }
-        }
-
-        $saved = $false
-        $lastError = $null
-        foreach ($uri in $uris) {
-            try {
-                Save-Uri -Uri $uri -Path $zip
-                $saved = $true
-                break
-            } catch {
-                $lastError = $_
-            }
-        }
-        if (-not $saved) {
-            throw "download failed: $($lastError.Exception.Message)"
-        }
+        Save-Uri -Uri 'https://github.com/ityme/upwsh/archive/refs/heads/main.zip' -Path $zip
 
         Expand-Archive -LiteralPath $zip -DestinationPath $extract -Force
         [pscustomobject]@{
             Root = (Resolve-RuntimeRoot $extract)
             Work = $work
-            SourceLabel = "https://github.com/$Repo@$script:DownloadedRevision"
+            SourceLabel = 'https://github.com/ityme/upwsh@main'
         }
     } catch {
         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
@@ -489,14 +394,6 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     return
 }
 
-$repo = if ($parsed.Repo) {
-    $parsed.Repo
-} elseif ($env:UPWSH_REPO) {
-    $env:UPWSH_REPO
-} else {
-    $script:DefaultRepo
-}
-$ref = if ($parsed.Ref) { $parsed.Ref } elseif ($env:UPWSH_REF) { $env:UPWSH_REF } else { $null }
 $source = if ($parsed.Source) {
     $parsed.Source
 } elseif ($env:UPWSH_SOURCE) {
@@ -531,7 +428,7 @@ try {
         }
     }
     $wantRemote = -not $parsed.Local -and -not $source
-    if ($parsed.Remote -or [bool]$ref -or [bool]$parsed.Repo -or [bool]$env:UPWSH_REPO) {
+    if ($parsed.Remote) {
         $wantRemote = $true
     }
     $sibling = $null
@@ -546,7 +443,7 @@ try {
     } elseif ($sibling -and -not $wantRemote) {
         $runtimeRoot = $sibling
     } else {
-        $downloaded = Get-DownloadedRuntime -Repo $repo -Ref $ref
+        $downloaded = Get-DownloadedRuntime
         $runtimeRoot = $downloaded.Root
         $workRoot = $downloaded.Work
     }

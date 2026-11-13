@@ -28,10 +28,8 @@ These are common upwsh commands used in various situations:
 install and manage upwsh
    install          Install or repair the runtime, then load this pwsh
                     [--local | --remote | --source <dir>]
-                    [--ref <ref>] [--repo <owner/name>]
    update           Update the runtime, then load this pwsh
                     [--local | --remote | --source <dir>]
-                    [--ref <ref>] [--repo <owner/name>]
    uninstall        Unload and remove the runtime; keep changed user settings
 
 maintenance
@@ -52,10 +50,9 @@ edit personal settings
    edit             Open user-settings.ps1, then reload this pwsh
 
 examples:
-   upwsh install                     Install the latest release from GitHub
+   upwsh install                     Install main from ityme/upwsh
    upwsh install --local             Install from the project in the current directory
-   upwsh install --remote --ref dev  Install a development branch
-   upwsh update                      Update to the latest release
+   upwsh update                      Update to main from ityme/upwsh
    upwsh uninstall                   Remove upwsh from this machine
    upwsh tool list                   Show which tools are installed
    upwsh tool install --all          Install every supported tool
@@ -198,9 +195,8 @@ function ConvertFrom-UpwshArguments {
     }
 
     if ($result.Command -in @('install', 'uninstall', 'update')) {
-        $allowed = @('--help', '-h', '--check', '-c', '--local', '--remote', '--ref', '--repo', '--source')
+        $allowed = @('--help', '-h', '--check', '-c', '--local', '--remote', '--source')
         if ($result.Command -eq 'uninstall') { $allowed = @('--help', '-h', '--check', '-c', '--profile', '-p', '--current-host') }
-        if ($result.Command -eq 'update') { $allowed = @('--help', '-h', '--check', '-c', '--local', '--remote', '--ref', '--repo', '--source') }
         while ($index -lt $tokens.Count) {
             $token = [string]$tokens[$index]
             if ($token -notin $allowed) {
@@ -209,7 +205,7 @@ function ConvertFrom-UpwshArguments {
                 return $result
             }
             $result.Rest = @($result.Rest + $token)
-            if ($token -in @('--profile', '-p', '--ref', '--repo', '--source')) {
+            if ($token -in @('--profile', '-p', '--source')) {
                 if ($index + 1 -ge $tokens.Count) {
                     $result.Help = $true
                     $result.Error = "missing value for $token"
@@ -515,7 +511,7 @@ if ($parsed.Command -in @('install', 'uninstall', 'update')) {
         SettingsExists = [IO.File]::Exists((Join-Path $summaryHome 'user-settings.ps1'))
         HookPresent = [IO.File]::Exists($summaryProfile) -and [IO.File]::ReadAllText($summaryProfile).Contains('# >>> upwsh >>>')
     }
-    $sourceKind = if (@($parsed.Rest | Where-Object { $_ -in @('--remote','--ref','--repo') }).Count -or $env:UPWSH_REF -or $env:UPWSH_REPO) {
+    $sourceKind = if ('--remote' -in $parsed.Rest) {
         'remote'
     } elseif ('--local' -in $parsed.Rest -or '--source' -in $parsed.Rest -or $env:UPWSH_SOURCE) { 'local' } else { 'remote' }
     $setupOutput = @(Invoke-UpwshSetup -Parsed $parsed 6>&1 | ForEach-Object { [string]$_ })

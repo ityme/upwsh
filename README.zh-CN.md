@@ -31,11 +31,7 @@
 irm https://github.com/ityme/upwsh/raw/main/src/script/install.ps1 | iex
 ```
 
-安装脚本 URL 的分支只决定脚本版本，不会自动指定安装分支。默认安装最新 release，未获取到 release 时回退到 `main`。首次安装 `dev` 请显式传参：
-
-```powershell
-& ([scriptblock]::Create((irm https://github.com/ityme/upwsh/raw/dev/src/script/install.ps1))) --ref dev
-```
+远程安装和更新只使用官方 `ityme/upwsh` 的 `main` 分支，不选择 release 或其他分支。
 
 安装位置为 `~/.config/upwsh`，会把 `upwsh` 加入 Path，在当前 pwsh 中定义 `upwsh` 命令，并加载 profile。若缺少 `eza`、`dust` 或 `btm`，安装结束会提示：
 
@@ -204,11 +200,11 @@ upwsh install --local
 <details>
 <summary>本地、远程与源码选项</summary>
 
-`upwsh install` / `upwsh update` 默认使用远程版本。开发当前项目时使用 `--local`，也可以用 `--source`、`--ref`、`--repo` 指定来源。管道安装同样默认 `--remote`，并读取 `UPWSH_SOURCE`、`UPWSH_REF`、`UPWSH_REPO`。
+`upwsh install` / `upwsh update` 默认从官方 `main` 分支下载。开发当前项目时使用 `--local`，或通过 `--source`、`UPWSH_SOURCE` 指定本地源码；不支持远程分支、版本或仓库选择。
 
 ```powershell
 upwsh install --source I:/ispace/upwsh
-upwsh install --remote --ref dev
+upwsh install --remote
 upwsh update --remote
 ```
 

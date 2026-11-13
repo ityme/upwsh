@@ -38,11 +38,7 @@ missing   eza, dust, btm
 next      upwsh tool install eza dust btm
 ```
 
-The installer URL selects the script version, not the runtime branch. Installation defaults to the latest release, falling back to `main` if release discovery fails. To install `dev` explicitly:
-
-```powershell
-& ([scriptblock]::Create((irm https://github.com/ityme/upwsh/raw/dev/src/script/install.ps1))) --ref dev
-```
+Remote installation and updates always use the official `ityme/upwsh` `main` branch, not releases or other branches.
 
 ## Try it
 
@@ -114,7 +110,7 @@ Changes made in another window, such as switching a branch in the same working t
 | `upwsh uninstall` | Unload, then remove the installation; keep a changed `user-settings.ps1`, delete themes |
 | `upwsh edit` | Open `~/.config/upwsh/user-settings.ps1` in nvim, vim, or Windows Notepad, then reload this pwsh |
 
-`upwsh install` and `upwsh update` default to the remote release. Use `--local` when developing from this project. Install and update load the current pwsh; uninstall unloads it, then deletes the runtime. A changed `user-settings.ps1` is kept; themes are not.
+`upwsh install` and `upwsh update` default to the official remote `main` branch. Use `--local` when developing from this project. Install and update load the current pwsh; uninstall unloads it, then deletes the runtime. A changed `user-settings.ps1` is kept; themes are not.
 
 The install directory is fixed at `~/.config/upwsh`; `UPWSH_HOME` records it. The native prompt in `src/lib/prompt.psm1` follows the current folder and Git branch. Run `upwsh --help` for command help.
 
@@ -204,11 +200,11 @@ upwsh install --local
 <details>
 <summary>Local, remote, and source options</summary>
 
-`upwsh install` and `upwsh update` default to the remote release. Use `--local` for the current project, or override the source with `--source`, `--ref`, or `--repo`. Piped installs also default to `--remote` and honor `UPWSH_SOURCE`, `UPWSH_REF`, and `UPWSH_REPO`.
+`upwsh install` and `upwsh update` download the official `main` branch by default. For development, use `--local`, or specify local source through `--source` or `UPWSH_SOURCE`. Remote branch, version, and repository selection are not supported.
 
 ```powershell
 upwsh install --source I:/ispace/upwsh
-upwsh install --remote --ref dev
+upwsh install --remote
 upwsh update --remote
 ```
 
