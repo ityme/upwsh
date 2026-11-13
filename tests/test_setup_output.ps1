@@ -17,10 +17,23 @@ if ($env:UPWSH_OUTPUT_TEST_FAIL -eq '1') { 'upwsh: fixture operation failed'; ex
 'home      C:\fixture\home'
 'source    I:\fixture\source'
 'cmd       C:\fixture\upwsh.cmd'
+'path      removed'
 Write-Host 'relaunch C:\temp\upwsh-run-fixture\install.ps1'
 'command   upwsh'
 'state     deployed'
-if ($MyInvocation.MyCommand.Name -eq 'uninstall.ps1') { 'keep      C:\fixture\user-settings.ps1' }
+if ($MyInvocation.MyCommand.Name -eq 'uninstall.ps1') {
+    if ($env:UPWSH_OUTPUT_KEEP_SETTINGS -ne '0') {
+        $homePath = Join-Path $HOME '.config/upwsh'
+        [IO.Directory]::CreateDirectory($homePath) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $homePath 'user-settings.ps1'), '# kept')
+        'keep      ' + (Join-Path $homePath 'user-settings.ps1')
+    } else {
+        $homePath = Join-Path $HOME '.config/upwsh'
+        $settings = Join-Path $homePath 'user-settings.ps1'
+        if ([IO.File]::Exists($settings)) { [IO.File]::Delete($settings) }
+        if ([IO.Directory]::Exists($homePath)) { [IO.Directory]::Delete($homePath) }
+    }
+}
 'warn      fixture warning'; 'unexpected diagnostic'
 exit 0
 '@
@@ -30,13 +43,18 @@ exit 0
     [IO.File]::WriteAllText((Join-Path $fixture 'script/install_profile.ps1'), "'profile   C:\fixture\profile.ps1'`n'state     installed'")
     foreach ($command in @('install', 'update', 'uninstall')) {
         $userHome = Join-Path $root $command
-        $code = '& ' + (ConvertTo-TestLiteral (Join-Path $fixture 'script/upwsh.ps1')) + " $command"
+        if ($command -eq 'uninstall') {
+            [IO.Directory]::CreateDirectory($userHome) | Out-Null
+            [IO.File]::WriteAllText((Join-Path $userHome 'test-profile.ps1'), '# >>> upwsh >>>')
+        }
+        $flags = if ($command -eq 'uninstall') { '' } else { ' --local' }
+        $code = '& ' + (ConvertTo-TestLiteral (Join-Path $fixture 'script/upwsh.ps1')) + " $command$flags"
         $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $code
         if ($result.Code -ne 0) { throw $result.Text }
         $verb = switch ($command) { install { 'installed' } update { 'updated' } uninstall { 'uninstalled' } }
         if ($result.Text -notmatch [regex]::Escape("upwsh $verb ✓")) { throw "missing success heading: $($result.Text)" }
         if ($result.Text -notmatch 'Home\s+' -or $result.Text -notmatch 'Profile\s+') { throw 'missing result details' }
-        if ($result.Text -match 'relaunch|state\s+deployed|command\s+upwsh|\x1b\[') { throw "internal/ANSI output leaked: $($result.Text)" }
+        if ($result.Text -match 'relaunch|state\s+deployed|command\s+upwsh|(?m)^path\s+removed|\x1b\[') { throw "internal/ANSI output leaked: $($result.Text)" }
         if ($result.Text -notmatch 'fixture warning' -or $result.Text -notmatch 'unexpected diagnostic') { throw 'diagnostics were hidden' }
         $successIndex = $result.Text.IndexOf("upwsh $verb ✓")
         if ($successIndex -lt $result.Text.IndexOf('Home') -or $successIndex -lt $result.Text.IndexOf('unexpected diagnostic')) { throw 'success result must follow details and notices' }
@@ -44,8 +62,10 @@ exit 0
             if ($result.Text -notmatch 'Run upwsh --help to get started\.') { throw 'installation missed help hint' }
         } elseif ($result.Text -match 'Run upwsh --help') { throw 'install help hint leaked to another action' }
         if ($command -eq 'uninstall') {
-            if ($result.Text -notmatch 'Restart your shell to clear any remaining session state\.' -or
-                $result.Text -notmatch 'Kept\s+C:\\fixture\\user-settings.ps1' -or $result.Text -match 'Ready in this shell') { throw $result.Text }
+            if ($result.Text -notmatch 'Restart your shell to finish cleanup\.' -or
+                $result.Text -notmatch '(?m)^  Home\s+.+\s+runtime removed\r?$' -or
+                $result.Text -notmatch '(?m)^  Profile\s+.+\s+unlinked\r?$' -or
+                $result.Text -notmatch '(?m)^  Settings\s+.+\s+kept\r?$' -or $result.Text -match 'Ready in this shell') { throw $result.Text }
         } else {
             if ($result.Text -notmatch 'Source\s+I:\\fixture\\source' -or $result.Text -notmatch 'Open a new PowerShell window') { throw $result.Text }
             $settingsPath = Join-Path $userHome '.config/upwsh/user-settings.ps1'
@@ -54,9 +74,33 @@ exit 0
                 if ($result.Text -notmatch ('(?m)^  ' + $label + '\s{' + (10 - $label.Length) + '}\S')) { throw "misaligned label $label" }
             }
         }
+        $detailLines = @($result.Text -split '\r?\n' | Where-Object { $_ -match '^  (Source|Home|Profile|Settings)\s+' })
+        $statusPositions = @($detailLines | ForEach-Object {
+            if ($_ -notmatch '\s{2}(local|remote|installed|updated|linked|unlinked|not linked|runtime removed|removed|created|kept|absent)$') { throw "missing status column: $_" }
+            $_.Length - $Matches[1].Length
+        } | Select-Object -Unique)
+        if ($statusPositions.Count -ne 1) { throw 'status column alignment differs between rows' }
+        if ($command -ne 'uninstall' -and $result.Text -notmatch '(?m)^  Settings\s+.+\s+created\r?$') { throw 'fresh settings were not labeled created' }
         if ($result.Text -notmatch ('(?m)^  upwsh ' + $verb + ' ✓\r?$')) { throw 'success line indentation changed' }
         $passed++
     }
+    $existingHome = Join-Path $root existing
+    $existingRuntime = Join-Path $existingHome '.config/upwsh'
+    [IO.Directory]::CreateDirectory($existingRuntime) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $existingRuntime 'user-settings.ps1'), '# user settings')
+    $result = Invoke-UpwshTestProcess -UserHome $existingHome -Command ('& ' + (ConvertTo-TestLiteral (Join-Path $fixture 'script/upwsh.ps1')) + ' install --local')
+    if ($result.Code -ne 0 -or $result.Text -notmatch '(?m)^  Settings\s+.+\s+kept\r?$') { throw 'existing settings were not labeled kept' }
+    $passed++
+    $result = Invoke-UpwshTestProcess -UserHome (Join-Path $root removed) -Command ('& ' + (ConvertTo-TestLiteral (Join-Path $fixture 'script/upwsh.ps1')) + ' uninstall') -Environment @{ UPWSH_OUTPUT_KEEP_SETTINGS = '0' }
+    if ($result.Code -ne 0 -or $result.Text -notmatch '(?m)^  Home\s+.+\s+removed\r?$' -or $result.Text -notmatch '(?m)^  Settings\s+.+\s+absent\r?$') { throw 'fully absent runtime status incorrect' }
+    $passed++
+    $deletedHome = Join-Path $root deleted
+    $deletedRuntime = Join-Path $deletedHome '.config/upwsh'
+    [IO.Directory]::CreateDirectory($deletedRuntime) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $deletedRuntime 'user-settings.ps1'), '# unchanged template')
+    $result = Invoke-UpwshTestProcess -UserHome $deletedHome -Command ('& ' + (ConvertTo-TestLiteral (Join-Path $fixture 'script/upwsh.ps1')) + ' uninstall') -Environment @{ UPWSH_OUTPUT_KEEP_SETTINGS = '0' }
+    if ($result.Code -ne 0 -or $result.Text -notmatch '(?m)^  Home\s+.+\s+removed\r?$' -or $result.Text -notmatch '(?m)^  Settings\s+.+\s+removed\r?$') { throw 'deleted settings were not labeled removed' }
+    $passed++
     $readyHome = Join-Path $root ready
     $readyRuntime = Join-Path $readyHome '.config/upwsh'
     [IO.Directory]::CreateDirectory($readyRuntime) | Out-Null
@@ -83,12 +127,14 @@ exit 0
     $rendering = $PSStyle.OutputRendering
     try {
         $PSStyle.OutputRendering = 'Ansi'
-        $colored = @(Write-UpwshSetupSummary -Command install -SetupOutput @('source    I:\fixture\source') -Loaded:$true -HomePath 'C:\fixture\home' -HookPath 'C:\fixture\profile.ps1' -Color:$true)
+        $colored = @(Write-UpwshSetupSummary -Command install -SetupOutput @('source    I:\fixture\source') -Loaded:$true -HomePath 'C:\fixture\home' -HookPath 'C:\fixture\profile.ps1' -Color:$true -Before @{ SettingsExists = $true } -After @{})
         foreach ($label in @('Source','Home','Profile','Settings')) {
             $expected = '  ' + $PSStyle.Foreground.Green + ('{0,-8}' -f $label) + $PSStyle.Reset + '  '
             if (-not @($colored | Where-Object { $_.StartsWith($expected) }).Count) { throw "missing project green label: $label" }
         }
         if ('  ' + $PSStyle.Foreground.Green + 'upwsh installed ✓' + $PSStyle.Reset -cnotin $colored) { throw 'success line did not use project green' }
+        $settingsLine = @($colored | Where-Object { $_ -match 'Settings' })[0]
+        if (-not $settingsLine.EndsWith($PSStyle.Foreground.Yellow + 'kept' + $PSStyle.Reset)) { throw 'kept status did not use yellow' }
         if ('  Ready in this shell.' -cnotin $colored -or '  Run upwsh --help to get started.' -cnotin $colored) { throw 'footer was unexpectedly styled' }
         $passed++
     } finally { $PSStyle.OutputRendering = $rendering }

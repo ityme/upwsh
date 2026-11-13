@@ -413,7 +413,11 @@ function Invoke-UpwshEdit {
 }
 
 function Write-UpwshSetupSummary {
-    param([string]$Command, [string[]]$SetupOutput, [bool]$Loaded, [string]$HomePath, [string]$HookPath, [bool]$Color)
+    param(
+        [string]$Command, [string[]]$SetupOutput, [bool]$Loaded,
+        [string]$HomePath, [string]$HookPath, [bool]$Color,
+        [hashtable]$Before, [hashtable]$After, [string]$SourceKind = 'local'
+    )
     $sourcePath = ''
     $kept = [Collections.Generic.List[string]]::new()
     $notices = [Collections.Generic.List[string]]::new()
@@ -424,23 +428,45 @@ function Write-UpwshSetupSummary {
         elseif ($plain -match '^keep\s+(.+)$') { if (-not $kept.Contains($Matches[1])) { $kept.Add($Matches[1]) } }
         elseif ($plain -match '^(missing|next|warn)\s+(.+)$') { $notices.Add($plain) }
         elseif ($plain -match '^tree\s+kept\s+(.+)$') { if (-not $kept.Contains($Matches[1])) { $kept.Add($Matches[1]) } }
-        elseif ($plain -and $plain -notmatch '^(home|target|state|cmd|command|relaunch|tree)\s+') { $notices.Add($plain) }
+        elseif ($plain -and $plain -notmatch '^(home|path|target|state|cmd|command|relaunch|tree)\s+') { $notices.Add($plain) }
     }
     $result = switch ($Command) { 'install' { 'installed' } 'update' { 'updated' } 'uninstall' { 'uninstalled' } }
     $heading = "upwsh $result ✓"
     if ($color) { $heading = "$($PSStyle.Foreground.Green)$heading$($PSStyle.Reset)" }
     Write-Output ''
-    $details = [ordered]@{}
-    if ($sourcePath -and $Command -ne 'uninstall') { $details.Source = $sourcePath }
-    $details.Home = $homePath
-    $details.Profile = $hookPath
-    if ($Command -ne 'uninstall') { $details.Settings = Join-Path $homePath 'user-settings.ps1' }
-    foreach ($label in $details.Keys) {
-        $prefix = '{0,-8}' -f $label
-        if ($color) { $prefix = "$($PSStyle.Foreground.Green)$prefix$($PSStyle.Reset)" }
-        Write-Output "  $prefix  $($details[$label])"
+    $settingsPath = Join-Path $homePath 'user-settings.ps1'
+    $rows = [Collections.Generic.List[object]]::new()
+    if ($sourcePath -and $Command -ne 'uninstall') {
+        $rows.Add(@{ Label = 'Source'; Path = $sourcePath; Status = $SourceKind })
     }
-    foreach ($path in $kept) { Write-Output ('  {0,-8}  {1}' -f 'Kept', $path) }
+    if ($Command -eq 'uninstall') {
+        $homeStatus = if ($After.HomeExists) { 'runtime removed' } else { 'removed' }
+        $profileStatus = if ($Before.HookPresent) { 'unlinked' } else { 'not linked' }
+        $settingsStatus = if ($After.SettingsExists) { 'kept' } elseif ($Before.SettingsExists) { 'removed' } else { 'absent' }
+    } else {
+        $homeStatus = $result
+        $profileStatus = 'linked'
+        $settingsStatus = if ($Before.SettingsExists) { 'kept' } else { 'created' }
+    }
+    $rows.Add(@{ Label = 'Home'; Path = $homePath; Status = $homeStatus })
+    $rows.Add(@{ Label = 'Profile'; Path = $hookPath; Status = $profileStatus })
+    $rows.Add(@{ Label = 'Settings'; Path = $settingsPath; Status = $settingsStatus })
+    foreach ($path in $kept) {
+        if ($path -ine $settingsPath -and $path -ine $homePath) {
+            $rows.Add(@{ Label = 'Kept'; Path = $path; Status = 'kept' })
+        }
+    }
+    $width = ($rows | ForEach-Object { $_.Path.Length } | Measure-Object -Maximum).Maximum
+    foreach ($row in $rows) {
+        $prefix = '{0,-8}' -f $row.Label
+        $status = $row.Status
+        if ($color) {
+            $prefix = "$($PSStyle.Foreground.Green)$prefix$($PSStyle.Reset)"
+            $statusColor = if ($status -eq 'kept') { $PSStyle.Foreground.Yellow } else { $PSStyle.Foreground.Green }
+            $status = "$statusColor$status$($PSStyle.Reset)"
+        }
+        Write-Output ("  {0}  {1}  {2}" -f $prefix, $row.Path.PadRight($width), $status)
+    }
     if ($notices.Count) {
         Write-Output ''
         foreach ($notice in $notices) { Write-Output "  $notice" }
@@ -448,7 +474,7 @@ function Write-UpwshSetupSummary {
     Write-Output ''
     Write-Output "  $heading"
     if ($Command -eq 'uninstall') {
-        Write-Output '  Restart your shell to clear any remaining session state.'
+        Write-Output '  Restart your shell to finish cleanup.'
     } elseif ($Loaded) {
         Write-Output '  Ready in this shell.'
     } else {
@@ -551,6 +577,19 @@ if ($parsed.Command -in @('install', 'uninstall', 'update')) {
         Complete-Upwsh $global:LASTEXITCODE $scriptInvocation
         return
     }
+    $summaryHome = Get-UpwshHome
+    $summaryProfile = if ($env:UPWSH_PROFILE) { [IO.Path]::GetFullPath((winpath $env:UPWSH_PROFILE)) } else { $PROFILE.CurrentUserAllHosts }
+    for ($index = 0; $index -lt $parsed.Rest.Count - 1; $index++) {
+        if ($parsed.Rest[$index] -in @('--profile','-p')) { $summaryProfile = [IO.Path]::GetFullPath((winpath $parsed.Rest[$index + 1])) }
+    }
+    if ('--current-host' -in $parsed.Rest) { $summaryProfile = $PROFILE.CurrentUserCurrentHost }
+    $before = @{
+        SettingsExists = [IO.File]::Exists((Join-Path $summaryHome 'user-settings.ps1'))
+        HookPresent = [IO.File]::Exists($summaryProfile) -and [IO.File]::ReadAllText($summaryProfile).Contains('# >>> upwsh >>>')
+    }
+    $sourceKind = if (@($parsed.Rest | Where-Object { $_ -in @('--remote','--ref','--repo') }).Count -or $env:UPWSH_REF -or $env:UPWSH_REPO) {
+        'remote'
+    } elseif ('--local' -in $parsed.Rest -or '--source' -in $parsed.Rest -or $env:UPWSH_SOURCE) { 'local' } else { 'remote' }
     $setupOutput = @(Invoke-UpwshSetup -Parsed $parsed 6>&1 | ForEach-Object { [string]$_ })
     $setupCode = $global:LASTEXITCODE
     if ($setupCode -ne 0) {
@@ -561,8 +600,6 @@ if ($parsed.Command -in @('install', 'uninstall', 'update')) {
     # Capture helpers before teardown/reload replaces their defining session state.
     $summary = ${function:Write-UpwshSetupSummary}
     $summaryColor = Test-UpwshStatusColor
-    $summaryHome = Get-UpwshHome
-    $summaryProfile = if ($env:UPWSH_PROFILE) { [IO.Path]::GetFullPath((winpath $env:UPWSH_PROFILE)) } else { $PROFILE.CurrentUserAllHosts }
     $setupCommand = $parsed.Command
     $loaded = -not [bool]$env:UPWSH_SKIP_SESSION_LOAD
     try {
@@ -575,7 +612,9 @@ if ($parsed.Command -in @('install', 'uninstall', 'update')) {
         return
     }
     & $summary -Command $setupCommand -SetupOutput @($setupOutput + $postOutput) -Loaded:$loaded `
-        -HomePath $summaryHome -HookPath $summaryProfile -Color:$summaryColor
+        -HomePath $summaryHome -HookPath $summaryProfile -Color:$summaryColor -Before $before `
+        -After @{ HomeExists = [IO.Directory]::Exists($summaryHome); SettingsExists = [IO.File]::Exists((Join-Path $summaryHome 'user-settings.ps1')) } `
+        -SourceKind $sourceKind
     $global:LASTEXITCODE = 0
     if ($PSCommandPath -and $scriptInvocation.CommandOrigin -eq 'Runspace') { exit 0 }
     return
