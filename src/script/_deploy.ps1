@@ -62,7 +62,7 @@ function Test-UpwshRuntime {
         'theme\pure-classic.json',
         'script\install.ps1', 'script\update.ps1', 'script\uninstall.ps1',
         'script\upwsh.ps1', 'script\install_profile.ps1', 'script\install_cli_tool.ps1',
-        'script\_deploy.ps1', 'script\_relaunch.ps1'
+        'script\_deploy.ps1', 'script\_relaunch.ps1', 'script\_setup_output.ps1'
     )) {
         if (-not [IO.File]::Exists([IO.Path]::Combine($Root, $name))) {
             throw "invalid runtime: missing $name"

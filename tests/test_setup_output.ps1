@@ -10,7 +10,9 @@ try {
     foreach ($name in @('upwsh_home.ps1', 'path_convert.ps1')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../src/lib/$name") -Destination (Join-Path $fixture "lib/$name")
     }
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../src/script/upwsh.ps1') -Destination (Join-Path $fixture 'script/upwsh.ps1')
+    foreach ($name in @('upwsh.ps1','_setup_output.ps1')) {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../src/script/$name") -Destination (Join-Path $fixture "script/$name")
+    }
     $stub = @'
 if ('--help' -in $args) { 'fixture help'; exit 0 }
 if ($env:UPWSH_OUTPUT_TEST_FAIL -eq '1') { 'upwsh: fixture operation failed'; exit 7 }
@@ -121,7 +123,7 @@ exit 0
     $passed++
     # Verify the palette directly; subprocess captures above must remain ANSI-free.
     $tokens = $null; $errors = $null
-    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $fixture 'script/upwsh.ps1'), [ref]$tokens, [ref]$errors)
+    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $fixture 'script/_setup_output.ps1'), [ref]$tokens, [ref]$errors)
     $formatter = $ast.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Write-UpwshSetupSummary' }, $true)
     Invoke-Expression $formatter.Extent.Text
     $rendering = $PSStyle.OutputRendering

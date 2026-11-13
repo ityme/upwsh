@@ -23,6 +23,7 @@ pwsh -NoLogo -NoProfile -File tests/test_install_profile.ps1
 pwsh -NoLogo -NoProfile -File tests/test_upwsh.ps1
 pwsh -NoLogo -NoProfile -File tests/test_edit_reload.ps1
 pwsh -NoLogo -NoProfile -File tests/test_setup_output.ps1
+pwsh -NoLogo -NoProfile -File tests/test_bootstrap_summary.ps1
 pwsh -NoLogo -NoProfile -File tests/test_session_cleanup.ps1
 pwsh -NoLogo -NoProfile -File tests/test_install.ps1
 pwsh -NoLogo -NoProfile -File tests/test_deploy_locks.ps1
@@ -34,7 +35,7 @@ The public `upwsh` function is created from an unbound script block containing a
 
 `session.psm1` retains immutable function/alias snapshots across profile reloads. Unload restores only definitions still owned by upwsh (including personal CommandMap shortcuts), preserving later user overrides; uninstall also removes the managed upwsh entry. PSReadLine options and built-in key bindings are restored when unchanged. Pre-existing custom key scripts are left untouched because PSReadLine does not expose them for reliable restoration. Direct uninstall defers teardown until disk work and status output finish. This does not undo arbitrary side effects executed by user-settings.ps1.
 
-Lifecycle result output from `upwsh install|update|uninstall` is summarized only after successful setup and session work. Internal deployment/shim/relaunch lines are omitted from the success card; warnings, missing-tool hints, unknown diagnostics and kept paths remain visible. Failed actions keep their diagnostic output and nonzero exit status. Help/check output and direct standalone scripts retain their existing diagnostic format. Summary details use aligned label/path/status columns. Settings distinguish created, kept, removed, and absent; the profile reports linked/unlinked (the profile file itself is not deleted). A remaining home directory after runtime removal is labeled runtime removed. Uninstall ends with Restart your shell to finish cleanup. `test_setup_output.ps1` uses stub entry scripts and does not install or remove a runtime.
+Lifecycle result output from `upwsh install|update|uninstall` is summarized only after successful setup and session work. Internal deployment/shim/relaunch lines are omitted from the success card; warnings, missing-tool hints, unknown diagnostics and kept paths remain visible. Failed actions keep their diagnostic output and nonzero exit status. Help/check output retains its diagnostic format. The formatter is shared in `script/_setup_output.ps1`; standalone install uses it from the acquired runtime after deployment succeeds, while nested `--skip-load` runs leave presentation to `upwsh`. Older acquired runtimes without this helper retain their original log output. Remote Source identifies the repository/revision rather than the temporary extraction directory. No extra coordination environment or generated formatter copies are used. Summary details use aligned label/path/status columns. Settings distinguish created, kept, removed, and absent; the profile reports linked/unlinked (the profile file itself is not deleted). A remaining home directory after runtime removal is labeled runtime removed. Uninstall ends with Restart your shell to finish cleanup. `test_setup_output.ps1` uses stub entry scripts and does not install or remove a runtime.
 
 ## Deployment
 

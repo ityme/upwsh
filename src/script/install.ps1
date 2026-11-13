@@ -349,6 +349,7 @@ function Get-LatestReleaseZipUri {
     if (-not $asset) {
         throw "release has no zip: $Repo"
     }
+    $script:DownloadedRevision = $release.tag_name
     $asset.browser_download_url
 }
 
@@ -391,11 +392,13 @@ function Get-DownloadedRuntime {
 
         $uris = [Collections.Generic.List[string]]::new()
         if ($Ref) {
+            $script:DownloadedRevision = $Ref
             $uris.Add((Get-ArchiveZipUri -Repo $Repo -Ref $Ref)) | Out-Null
         } else {
             try {
                 $uris.Add((Get-LatestReleaseZipUri -Repo $Repo)) | Out-Null
             } catch {
+                $script:DownloadedRevision = $script:DefaultRef
                 $uris.Add((Get-ArchiveZipUri -Repo $Repo -Ref $script:DefaultRef)) | Out-Null
             }
         }
@@ -419,6 +422,7 @@ function Get-DownloadedRuntime {
         [pscustomobject]@{
             Root = (Resolve-RuntimeRoot $extract)
             Work = $work
+            SourceLabel = "$Repo@$script:DownloadedRevision"
         }
     } catch {
         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
@@ -504,6 +508,7 @@ $directory = Get-DefaultDestination
 $installed = [IO.File]::Exists((Join-Path $directory 'profile.ps1')) -or
     [IO.File]::Exists((Join-Path $directory 'script\upwsh.ps1'))
 $workRoot = $null
+$setupLines = $null
 try {
     if ($script:UpdateOnly -and -not $installed) {
         throw 'runtime is not installed; run upwsh install first'
@@ -553,26 +558,46 @@ try {
     # Use the implementation bundled with the chosen source, including standalone downloads.
     $deploy = Join-Path $runtimeRoot 'script\_deploy.ps1'
     if (-not [IO.File]::Exists($deploy)) { throw 'invalid runtime: missing script\_deploy.ps1' }
-    . $deploy
-    Install-UpwshRuntime -Source $runtimeRoot -Destination $directory
-    $commandPath = Join-Path $directory 'lib\upwsh.psm1'
-    if (-not $env:UPWSH_SKIP_SESSION_LOAD -and [IO.File]::Exists($commandPath)) {
-        Import-Module $commandPath -Global -Force -DisableNameChecking
-    }
-    if (-not $script:UpdateOnly) {
-        foreach ($line in @(Get-MissingCommandToolHint -InstallHome $directory)) {
-            Write-Output $line
+    $formatter = Join-Path $runtimeRoot 'script\_setup_output.ps1'
+    # Older releases without the formatter keep their diagnostic output.
+    $showSummary = -not $parsed.SkipLoad -and [IO.File]::Exists($formatter)
+    $summaryBefore = @{ SettingsExists = [IO.File]::Exists((Join-Path $directory 'user-settings.ps1')) }
+    $summaryColor = Test-UpwshStatusColor
+    $setupLines = [Collections.Generic.List[string]]::new()
+    $apply = {
+        . $deploy
+        Install-UpwshRuntime -Source $runtimeRoot -Destination $directory | ForEach-Object {
+            if ($workRoot -and ([string]$_ -replace '\x1b\[[0-9;]*m', '') -match '^source\s+') {
+                Write-Output "source    $($downloaded.SourceLabel)"
+            } else { $_ }
         }
-        if (-not $parsed.SkipLoad) {
-            $loader = Join-Path $directory 'script\upwsh.ps1'
-            if (-not [IO.File]::Exists($loader)) {
-                throw "missing $loader"
+        $commandPath = Join-Path $directory 'lib\upwsh.psm1'
+        if (-not $env:UPWSH_SKIP_SESSION_LOAD -and [IO.File]::Exists($commandPath)) {
+            Import-Module $commandPath -Global -Force -DisableNameChecking
+        }
+        if (-not $script:UpdateOnly) {
+            foreach ($line in @(Get-MissingCommandToolHint -InstallHome $directory)) {
+                Write-Output $line
             }
-            & $loader load
+            if (-not $parsed.SkipLoad) {
+                $loader = Join-Path $directory 'script\upwsh.ps1'
+                if (-not [IO.File]::Exists($loader)) { throw "missing $loader" }
+                & $loader load
+            }
         }
     }
+    if ($showSummary) {
+        & $apply 6>&1 | ForEach-Object { $setupLines.Add([string]$_) }
+        . $formatter
+        $hookPath = if ($env:UPWSH_PROFILE) { [IO.Path]::GetFullPath((winpath $env:UPWSH_PROFILE)) } else { $PROFILE.CurrentUserAllHosts }
+        Write-UpwshSetupSummary -Command $(if ($script:UpdateOnly) { 'update' } else { 'install' }) `
+            -SetupOutput $setupLines.ToArray() -HomePath $directory -HookPath $hookPath -Color:$summaryColor `
+            -Loaded:(-not $script:UpdateOnly -and -not $env:UPWSH_SKIP_SESSION_LOAD -and -not (Test-InstallFileEntry)) `
+            -Before $summaryBefore -After @{} -SourceKind $(if ($workRoot) { 'remote' } else { 'local' })
+    } else { & $apply }
     Complete-Install 0 $scriptInvocation
 } catch {
+    if ($setupLines) { $setupLines | Write-Output }
     Write-Output "upwsh: $($_.Exception.Message)"
     Complete-Install 1 $scriptInvocation
 } finally {
