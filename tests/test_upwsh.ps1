@@ -488,7 +488,8 @@ try {
             'tool', 'uninstall', 'eza'
         )
         Assert-Equal $result.Code 0
-        Assert-Contains $result.Text 'removed'
+        Assert-Contains $result.Text 'uninstalled'
+        Assert-Contains $result.Text $exe
         Assert-True (-not (Test-Path -LiteralPath $exe)) "uninstall left $exe"
     }
 
@@ -500,8 +501,8 @@ try {
             Assert-Equal $result.Code 0
             Assert-Contains $result.Text 'eza'
             Assert-Contains $result.Text 'uninstalled'
-            Assert-Contains $result.Text 'Command    | Installed   | Description'
-            Assert-Contains $result.Text '-----------+-------------+'
+            Assert-Contains $result.Text 'Tool        Version    Status       Path'
+            Assert-Contains $result.Text 'Description'
             Assert-Contains $result.Text 'File listing; ls alternative'
             Assert-True ($result.Text -notmatch 'bat') 'tool list leaked extra tools'
             Assert-True ($result.Text -notmatch 'dir') 'tool list printed install dir'
@@ -515,12 +516,11 @@ try {
         Assert-Equal $result.Code 0
         $lines = @($result.Text -split '\r?\n' | Where-Object { $_.Trim() })
         Assert-Equal $lines.Count 23
+        $descriptionColumn = $lines[0].IndexOf('Description')
         foreach ($line in $lines | Select-Object -Skip 2) {
-            $columns = @($line -split '\|')
-            Assert-Equal $columns.Count 3
-            Assert-Equal $line.IndexOf('|') 11
-            Assert-Equal $line.LastIndexOf('|') 25
-            Assert-True (-not [string]::IsNullOrWhiteSpace($columns[2])) 'missing tool description'
+            Assert-True ($line -match '^  \S+\s+-\s+(installed|uninstalled)\s+') 'tool row format differs from install'
+            Assert-True ($line.Length -gt $descriptionColumn) 'missing tool description'
+            Assert-True (-not [string]::IsNullOrWhiteSpace($line.Substring($descriptionColumn))) 'empty tool description'
         }
         Assert-Contains $result.Text 'Fast text search; grep alternative (rg)'
         Assert-True ($result.Text -notmatch '\x1b\[') 'captured tool table contains ANSI styling'

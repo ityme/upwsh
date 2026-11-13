@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $entry = Join-Path $PSScriptRoot '../src/script/install_cli_tool.ps1'
 $t = $null; $e = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($entry, [ref]$t, [ref]$e)
-foreach ($name in @('Write-CliToolInstallRow','Install-CliTool')) {
+foreach ($name in @('Write-CliToolRow','Install-CliTool')) {
     $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name }, $true)
     Invoke-Expression $fn.Extent.Text
 }
@@ -28,7 +28,7 @@ try {
     $failed = $false
     try { Install-CliTool -Tool $tool -Destination $root -Force } catch { $failed = $_.Exception.Message -eq 'fixture download failed' }
     if (-not $failed) { throw 'download failure hidden' }
-    $row = Write-CliToolInstallRow -Name fixture -Status uninstalled
+    $row = Write-CliToolRow -Name fixture -Status uninstalled
     if ($row -notmatch '^  fixture\s+-\s+uninstalled\s+-') { throw 'uninstalled status incorrect' }
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Output '4 tool install output tests passed.'

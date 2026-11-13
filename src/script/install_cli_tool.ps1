@@ -111,20 +111,18 @@ function Test-CliToolCommand {
     )
 }
 
-function Write-CliToolListLine {
-    param([string]$Name, [bool]$Installed, [string]$Description)
+function Write-CliToolHeader {
+    param([switch]$WithDescription)
 
-    $state = if ($Installed) { 'installed' } else { 'uninstalled' }
-    $state = '{0,-11}' -f $state
-    if (Test-UpwshStatusColor) {
-        $color = if ($Installed) { $PSStyle.Foreground.Green } else { $PSStyle.Foreground.Yellow }
-        $state = "$color$state$($PSStyle.Reset)"
-    }
-    Write-Output ('{0,-10} | {1} | {2}' -f $Name, $state, $Description)
+    $header = '  {0,-10}  {1,-9}  {2,-11}  {3}' -f 'Tool', 'Version', 'Status', ('Path'.PadRight($script:ToolPathWidth))
+    $separator = '  {0}  {1}  {2}  {3}' -f ('-' * 10), ('-' * 9), ('-' * 11), ('-' * $script:ToolPathWidth)
+    if ($WithDescription) { $header += '  Description'; $separator += '  ' + ('-' * 35) }
+    Write-Output ($header.TrimEnd())
+    Write-Output $separator
 }
 
-function Write-CliToolInstallRow {
-    param([string]$Name, [string]$Version = '-', [string]$Status, [string]$Path = '-', [switch]$Pending)
+function Write-CliToolRow {
+    param([string]$Name, [string]$Version = '-', [string]$Status, [string]$Path = '-', [string]$Description, [switch]$Pending)
 
     # Only a real terminal gets an in-place download row; pipes get final rows only.
     $interactive = $Host.UI.SupportsVirtualTerminal -and -not [Console]::IsOutputRedirected
@@ -141,6 +139,9 @@ function Write-CliToolInstallRow {
         $state = "$color$state$($PSStyle.Reset)"
     }
     $row = '  {0,-10}  {1,-9}  {2}  {3}' -f $Name, $Version, $state, $Path
+    if ($PSBoundParameters.ContainsKey('Description')) {
+        $row = '  {0,-10}  {1,-9}  {2}  {3}  {4}' -f $Name, $Version, $state, $Path.PadRight($script:ToolPathWidth), $Description
+    }
     $script:ToolRowPending = [bool]$Pending
     if ($Pending) { [Console]::Write($row) } else { Write-Output $row }
 }
@@ -150,11 +151,11 @@ function Uninstall-CliTool {
 
     $target = Join-Path $Destination $Tool.Exe
     if (-not (Test-Path -LiteralPath $target)) {
-        Write-UpwshStatus skip "$($Tool.Name)  missing"
+        Write-CliToolRow -Name $Tool.Name -Status uninstalled -Path $target
         return
     }
     Remove-Item -LiteralPath $target -Force
-    Write-UpwshStatus ok "$($Tool.Name)  removed"
+    Write-CliToolRow -Name $Tool.Name -Status uninstalled -Path $target
 }
 
 function Install-CliTool {
@@ -162,7 +163,7 @@ function Install-CliTool {
 
     $target = Join-Path $Destination $Tool.Exe
     if (-not $Force -and (Test-Path -LiteralPath $target)) {
-        Write-CliToolInstallRow -Name $Tool.Name -Status installed -Path $target
+        Write-CliToolRow -Name $Tool.Name -Status installed -Path $target
         return
     }
 
@@ -179,7 +180,7 @@ function Install-CliTool {
     New-Item -ItemType Directory -Path $tempRoot | Out-Null
     try {
         $download = Join-Path $tempRoot $asset.name
-        Write-CliToolInstallRow -Name $Tool.Name -Version $Tool.InstallVersion -Status downloading -Pending
+        Write-CliToolRow -Name $Tool.Name -Version $Tool.InstallVersion -Status downloading -Pending
         Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $download -UseBasicParsing
 
         if ($asset.name -like '*.zip') {
@@ -196,7 +197,7 @@ function Install-CliTool {
 
         New-Item -ItemType Directory -Path $Destination -Force | Out-Null
         Copy-Item -LiteralPath $extracted.FullName -Destination $target -Force
-        Write-CliToolInstallRow -Name $Tool.Name -Version $Tool.InstallVersion -Status installed -Path $target
+        Write-CliToolRow -Name $Tool.Name -Version $Tool.InstallVersion -Status installed -Path $target
     } finally {
         Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -236,25 +237,22 @@ if ($Update -and $InstalledOnly) {
     }
 }
 
+$script:ToolPathWidth = 40
+$script:ToolRowPending = $false
 if ($List) {
-    Write-Output ('{0,-10} | {1,-11} | {2}' -f 'Command', 'Installed', 'Description')
-    Write-Output ('{0}-+-{1}-+-{2}' -f ('-' * 10), ('-' * 11), ('-' * 45))
-    foreach ($tool in $selected) {
-        Write-CliToolListLine `
-            -Name $tool.Name `
-            -Installed:(Test-CliToolCommand ([IO.Path]::GetFileNameWithoutExtension($tool.Exe))) `
-            -Description $tool.Description
-    }
+    $rows = @(foreach ($tool in $selected) {
+        $command = Get-Command ([IO.Path]::GetFileNameWithoutExtension($tool.Exe)) -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        $path = if ($command) { $command.Source } else { '-' }
+        $script:ToolPathWidth = [Math]::Max($script:ToolPathWidth, $path.Length)
+        @{ Name = $tool.Name; Status = $(if ($command) { 'installed' } else { 'uninstalled' }); Path = $path; Description = $tool.Description }
+    })
+    Write-CliToolHeader -WithDescription
+    foreach ($row in $rows) { Write-CliToolRow @row }
     return
 }
 
 New-Item -ItemType Directory -Path $Dir -Force | Out-Null
-if ($Uninstall) {
-    Write-UpwshStatus dir $Dir
-} else {
-    Write-Output ('  {0,-10}  {1,-9}  {2,-11}  {3}' -f 'Tool', 'Version', 'Status', 'Path')
-    Write-Output ('  {0}  {1}  {2}  {3}' -f ('-' * 10), ('-' * 9), ('-' * 11), ('-' * 40))
-}
+Write-CliToolHeader
 $script:ToolRowPending = $false
 $global:LASTEXITCODE = 0
 $failed = [Collections.Generic.List[string]]::new()
@@ -267,12 +265,8 @@ foreach ($tool in $selected) {
         Install-CliTool -Tool $tool -Destination $Dir -Force:$Update
     } catch {
         $failed.Add("$($tool.Name): $($_.Exception.Message)")
-        if ($Uninstall) {
-            Write-UpwshStatus error "$($tool.Name)  $($_.Exception.Message)"
-        } else {
-            $version = if ($tool.InstallVersion) { $tool.InstallVersion } else { '-' }
-            Write-CliToolInstallRow -Name $tool.Name -Version $version -Status failed
-        }
+        $version = if ($tool.InstallVersion) { $tool.InstallVersion } else { '-' }
+        Write-CliToolRow -Name $tool.Name -Version $version -Status failed
     }
 }
 
