@@ -427,25 +427,26 @@ function Write-UpwshSetupSummary {
         elseif ($plain -and $plain -notmatch '^(home|target|state|cmd|command|relaunch|tree)\s+') { $notices.Add($plain) }
     }
     $result = switch ($Command) { 'install' { 'installed' } 'update' { 'updated' } 'uninstall' { 'uninstalled' } }
-    $heading = "✓ upwsh $result"
+    $heading = "upwsh $result ✓"
     if ($color) { $heading = "$($PSStyle.Foreground.Green)$heading$($PSStyle.Reset)" }
     Write-Output ''
     $details = [ordered]@{}
     if ($sourcePath -and $Command -ne 'uninstall') { $details.Source = $sourcePath }
     $details.Home = $homePath
     $details.Profile = $hookPath
+    if ($Command -ne 'uninstall') { $details.UserSettings = Join-Path $homePath 'user-settings.ps1' }
     foreach ($label in $details.Keys) {
-        $prefix = '{0,-7}' -f $label
+        $prefix = '{0,-12}' -f $label
         if ($color) { $prefix = "$($PSStyle.Foreground.BrightBlack)$prefix$($PSStyle.Reset)" }
         Write-Output "  $prefix  $($details[$label])"
     }
-    foreach ($path in $kept) { Write-Output "  Kept     $path" }
+    foreach ($path in $kept) { Write-Output ('  {0,-12}  {1}' -f 'Kept', $path) }
     if ($notices.Count) {
         Write-Output ''
         foreach ($notice in $notices) { Write-Output "  $notice" }
     }
     Write-Output ''
-    Write-Output $heading
+    Write-Output "  $heading"
     if ($Command -eq 'uninstall') {
         Write-Output '  Restart your shell to clear any remaining session state.'
     } elseif ($Loaded) {

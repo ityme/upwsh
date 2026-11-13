@@ -195,7 +195,7 @@ try {
         $result = Invoke-Upwsh -Tokens @('install')
         Assert-Equal $result.Code 0
         Assert-True (Test-Path -LiteralPath $installedProfile) 'install missed runtime'
-        Assert-Contains $result.Text '✓ upwsh installed'
+        Assert-Contains $result.Text 'upwsh installed ✓'
         Assert-Contains $result.Text 'Home'
         Assert-Contains $result.Text 'Profile'
         $text = [IO.File]::ReadAllText($hook)
@@ -208,7 +208,7 @@ try {
         Assert-Equal $result.Code 0
         Assert-True ($result.Text -notmatch 'Get-MissingCommandToolHint') 'install leaked the post-load helper error'
         Assert-True ($result.Text -notmatch 'Complete-Install') 'install leaked the completion helper error'
-        Assert-Contains $result.Text '✓ upwsh installed'
+        Assert-Contains $result.Text 'upwsh installed ✓'
         Assert-Contains $result.Text 'Ready in this shell.'
     }
 

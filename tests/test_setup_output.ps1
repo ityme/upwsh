@@ -34,11 +34,11 @@ exit 0
         $result = Invoke-UpwshTestProcess -UserHome $userHome -Command $code
         if ($result.Code -ne 0) { throw $result.Text }
         $verb = switch ($command) { install { 'installed' } update { 'updated' } uninstall { 'uninstalled' } }
-        if ($result.Text -notmatch [regex]::Escape("✓ upwsh $verb")) { throw "missing success heading: $($result.Text)" }
+        if ($result.Text -notmatch [regex]::Escape("upwsh $verb ✓")) { throw "missing success heading: $($result.Text)" }
         if ($result.Text -notmatch 'Home\s+' -or $result.Text -notmatch 'Profile\s+') { throw 'missing result details' }
         if ($result.Text -match 'relaunch|state\s+deployed|command\s+upwsh|\x1b\[') { throw "internal/ANSI output leaked: $($result.Text)" }
         if ($result.Text -notmatch 'fixture warning' -or $result.Text -notmatch 'unexpected diagnostic') { throw 'diagnostics were hidden' }
-        $successIndex = $result.Text.IndexOf("✓ upwsh $verb")
+        $successIndex = $result.Text.IndexOf("upwsh $verb ✓")
         if ($successIndex -lt $result.Text.IndexOf('Home') -or $successIndex -lt $result.Text.IndexOf('unexpected diagnostic')) { throw 'success result must follow details and notices' }
         if ($command -eq 'install') {
             if ($result.Text -notmatch 'Run upwsh --help to get started\.') { throw 'installation missed help hint' }
@@ -46,7 +46,15 @@ exit 0
         if ($command -eq 'uninstall') {
             if ($result.Text -notmatch 'Restart your shell to clear any remaining session state\.' -or
                 $result.Text -notmatch 'Kept\s+C:\\fixture\\user-settings.ps1' -or $result.Text -match 'Ready in this shell') { throw $result.Text }
-        } elseif ($result.Text -notmatch 'Source\s+I:\\fixture\\source' -or $result.Text -notmatch 'Open a new PowerShell window') { throw $result.Text }
+        } else {
+            if ($result.Text -notmatch 'Source\s+I:\\fixture\\source' -or $result.Text -notmatch 'Open a new PowerShell window') { throw $result.Text }
+            $settingsPath = Join-Path $userHome '.config/upwsh/user-settings.ps1'
+            if ($result.Text -notmatch ('UserSettings\s+' + [regex]::Escape($settingsPath))) { throw 'missing personal settings path' }
+            foreach ($label in @('Source','Home','Profile','UserSettings')) {
+                if ($result.Text -notmatch ('(?m)^  ' + $label + '\s{' + (14 - $label.Length) + '}\S')) { throw "misaligned label $label" }
+            }
+        }
+        if ($result.Text -notmatch ('(?m)^  upwsh ' + $verb + ' ✓\r?$')) { throw 'success line indentation changed' }
         $passed++
     }
     $readyHome = Join-Path $root ready
